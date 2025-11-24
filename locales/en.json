@@ -1,0 +1,269 @@
+{
+  "common": {
+    "subscribers": "Subscribers",
+    "total_views": "Total Views",
+    "videos": "Videos",
+    "avg_views_per_video": "Avg Views/Video",
+    "channel": "Channel",
+    "niche": "Niche",
+    "target_channel": "Target Channel",
+    "score": "Score",
+    "count": "Count",
+    "total": "Total",
+    "average": "Average",
+    "recommendations": "Recommendations",
+    "suggestions": "Suggestions",
+    "alerts": "Alerts",
+    "analysis": "Analysis",
+    "status": "Status",
+    "error": "Error",
+    "success": "Success",
+    "warning": "Warning",
+    "info": "Info",
+    "loading": "Loading...",
+    "search": "Search",
+    "filter": "Filter",
+    "reset": "Reset",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "close": "Close",
+    "next": "Next",
+    "previous": "Previous",
+    "submit": "Submit",
+    "update": "Update",
+    "refresh": "Refresh"
+  },
+  "pages": {
+    "dashboard": {
+      "title": "Dashboard",
+      "description": "Welcome to YouTube SEO AGI Tool - Your channel optimization assistant!",
+      "quick_stats": "Quick Stats",
+      "proactive_suggestions": "Proactive Suggestions"
+    },
+    "channel_analysis": {
+      "title": "Channel Analysis",
+      "description": "Analyze your channel's performance",
+      "analyze_button": "Analyze Channel",
+      "statistics": "Channel Statistics",
+      "video_performance": "Video Performance",
+      "average_views": "Average Views",
+      "average_likes": "Average Likes",
+      "average_comments": "Average Comments"
+    },
+    "keyword_research": {
+      "title": "Keyword Research",
+      "description": "Discover trending keywords",
+      "enter_keywords": "Enter base keywords (one per line)",
+      "research_button": "Research Keywords",
+      "found_keywords": "Found {count} Keywords",
+      "top_keywords": "Top Ranked Keywords",
+      "rank": "Rank"
+    },
+    "competitor_analysis": {
+      "title": "Competitor Analysis",
+      "description": "Analyze competitor channels",
+      "enter_keywords": "Enter niche keywords to find competitors",
+      "find_button": "Find Competitors",
+      "found_competitors": "Found {count} Competitors"
+    },
+    "title_optimizer": {
+      "title": "Title Optimizer",
+      "description": "Generate title variations for SEO",
+      "enter_title": "Enter video title",
+      "song_name": "Song name (optional)",
+      "generate_button": "Generate Title Variations",
+      "variations": "Title Variations (Ranked by SEO Score)",
+      "length": "Length",
+      "keywords_found": "Keywords Found",
+      "structure": "Structure"
+    },
+    "description_generator": {
+      "title": "Description Generator",
+      "description": "Generate SEO optimized descriptions",
+      "video_title": "Video Title",
+      "song_name": "Song Name",
+      "custom_info": "Custom Information (optional)",
+      "generate_button": "Generate Description",
+      "generated_description": "Generated Description",
+      "word_count": "Word Count",
+      "character_count": "Character Count",
+      "hashtags": "Hashtags",
+      "seo_score": "SEO Score"
+    },
+    "tag_suggester": {
+      "title": "Tag Suggester",
+      "description": "Get tag suggestions for your video",
+      "video_title": "Video Title",
+      "song_name": "Song Name (optional)",
+      "suggest_button": "Suggest Tags",
+      "suggested_tags": "Suggested Tags",
+      "copy_tags": "Tags (copy these)",
+      "total_tags": "Total Tags",
+      "optimization_score": "Optimization Score",
+      "best_practices": "Best Practices"
+    },
+    "trend_predictor": {
+      "title": "Trend Predictor",
+      "description": "Predict future trends",
+      "predict_button": "Predict Trends",
+      "recent_trends": "Recent Trends",
+      "trending_keywords": "Trending Keywords",
+      "trending_themes": "Trending Themes",
+      "predictions": "Predictions",
+      "best_posting_times": "Best Posting Times",
+      "timezone": "Timezone",
+      "recommendations": "Recommendations",
+      "next_optimal_post": "Next Optimal Post Time",
+      "trend": "Trend",
+      "confidence": "Confidence",
+      "action": "Action"
+    },
+    "proactive_advisor": {
+      "title": "Proactive Advisor",
+      "description": "Get smart suggestions and alerts",
+      "get_suggestions_button": "Get Proactive Suggestions",
+      "content_ideas": "Content Ideas",
+      "priority_actions": "Priority Actions",
+      "reason": "Reason",
+      "difficulty": "Difficulty"
+    },
+    "performance_tracking": {
+      "title": "Performance Tracking & Self-Improvement",
+      "description": "Track recommendation performance and learn from successes/failures",
+      "take_snapshot": "Take Snapshot",
+      "analyze_growth": "Analyze Growth Trend",
+      "learn_from_recommendations": "Learn from Recommendations",
+      "get_summary": "Get Performance Summary",
+      "current_metrics": "Current Metrics",
+      "growth_trend": "Growth Trend",
+      "subscriber_growth": "Subscriber Growth",
+      "daily_average_growth": "Daily Average Growth",
+      "growth_rate": "Growth Rate",
+      "projection_to_1m": "Projection to 1M Subscribers",
+      "days_to_1m": "Days to 1M",
+      "insufficient_data": "Insufficient Data"
+    },
+    "milestone_tracker": {
+      "title": "Growth Milestone Tracker",
+      "description": "Track your progress toward 1 million subscribers!",
+      "update_status_button": "Update Status",
+      "current_status": "Current Status",
+      "current_subscribers": "Current Subscribers",
+      "overall_progress": "Overall Progress",
+      "next_milestone": "Next Milestone",
+      "progress_to_next": "Progress to Next Milestone",
+      "motivation": "Motivation",
+      "time_estimates": "Time Estimates to Next Milestone",
+      "milestone_strategy": "Milestone Strategy",
+      "focus": "Focus",
+      "key_actions": "Key Actions",
+      "content_tips": "Content Tips",
+      "growth_hacks": "Growth Hacks",
+      "achieved_milestones": "Achieved Milestones"
+    },
+    "feedback_learning": {
+      "title": "Feedback Learning System",
+      "description": "Learn from user feedback and recommendation performance"
+    },
+    "viral_predictor": {
+      "title": "Viral Content Predictor",
+      "description": "Predict viral potential before publishing"
+    },
+    "competitor_benchmark": {
+      "title": "Competitor Benchmarking",
+      "description": "Learn from 1M+ subscriber channels"
+    },
+    "multi_source_data": {
+      "title": "Multi-Source Data Integration",
+      "description": "Integrate data from Google Trends, Reddit, Twitter, and more"
+    },
+    "knowledge_graph": {
+      "title": "Knowledge Graph & Contradiction Resolution",
+      "description": "Unified knowledge graph integrating all data sources"
+    },
+    "continuous_learning": {
+      "title": "Continuous Learning Loop (24/7)",
+      "description": "Automated learning system that runs continuously"
+    },
+    "code_self_improvement": {
+      "title": "Code Self-Improvement",
+      "description": "Optimize algorithms and improve code based on performance metrics"
+    },
+    "safety_ethics": {
+      "title": "Safety & Ethics Layer",
+      "description": "Ensure content compliance with YouTube Community Guidelines and ethical standards"
+    }
+  },
+  "navigation": {
+    "dashboard": "📊 Dashboard",
+    "channel_analysis": "📈 Channel Analysis",
+    "keyword_research": "🔍 Keyword Research",
+    "competitor_analysis": "⚔️ Competitor Analysis",
+    "title_optimizer": "✏️ Title Optimizer",
+    "description_generator": "📝 Description Generator",
+    "tag_suggester": "🏷️ Tag Suggester",
+    "trend_predictor": "📅 Trend Predictor",
+    "proactive_advisor": "💡 Proactive Advisor",
+    "performance_tracking": "📊 Performance Tracking",
+    "milestone_tracker": "🎯 Milestone Tracker",
+    "feedback_learning": "🧠 Feedback Learning",
+    "viral_predictor": "🔥 Viral Predictor",
+    "competitor_benchmark": "📊 Competitor Benchmark",
+    "multi_source_data": "🌐 Multi-Source Data",
+    "knowledge_graph": "🧠 Knowledge Graph",
+    "continuous_learning": "🔄 Continuous Learning",
+    "code_self_improvement": "⚙️ Code Self-Improvement",
+    "safety_ethics": "🛡️ Safety & Ethics"
+  },
+  "forms": {
+    "target_channel": "🎯 Target Channel",
+    "niche": "🎨 Niche",
+    "channel_help": "Enter YouTube channel handle (without @)",
+    "niche_help": "Enter your content niche/keywords",
+    "enter_keywords": "Enter keywords",
+    "enter_title": "Enter video title",
+    "enter_description": "Enter video description",
+    "enter_tags": "Enter tags (comma-separated)",
+    "optional": "optional"
+  },
+  "messages": {
+    "channel_not_found": "Channel not found. Please check the channel handle.",
+    "error_loading": "Error loading data: {error}",
+    "analyzing": "Analyzing...",
+    "researching": "Researching...",
+    "generating": "Generating...",
+    "loading": "Loading...",
+    "no_data": "No data",
+    "insufficient_data": "Need more snapshots to analyze growth trend. Take snapshots regularly!",
+    "success": "Success!",
+    "error": "An error occurred",
+    "warning": "Warning"
+  },
+  "cards": {
+    "subscribers": "Subscribers",
+    "total_views": "Total Views",
+    "videos": "Videos",
+    "avg_views_per_video": "Avg Views/Video",
+    "total_channel_subscribers": "Total channel subscribers",
+    "all_time_video_views": "All-time video views",
+    "total_published_videos": "Total published videos",
+    "average_views_per_video": "Average views per video",
+    "recommendation": "Recommendation",
+    "alert": "Alert",
+    "suggestion": "Suggestion",
+    "content_idea": "Content Idea",
+    "priority_action": "Priority Action",
+    "best_practice": "Best Practice",
+    "insight": "Insight"
+  },
+  "app": {
+    "title": "🎸 YouTube SEO AGI Tool",
+    "language_selector": "Language",
+    "turkish": "Türkçe",
+    "english": "English"
+  }
+}
+

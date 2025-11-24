@@ -1,0 +1,44 @@
+# YouTube SEO AGI Tool - Dependencies
+# Core - YouTube API
+google-api-python-client>=2.100.0
+google-auth-oauthlib>=1.1.0
+google-auth-httplib2>=0.1.1
+
+# Data Processing (Python 3.13 compatible)
+pandas>=2.2.0
+numpy>=1.26.0
+
+# Web Scraping & Requests
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+httpx>=0.25.0
+
+# CLI & UI
+click>=8.1.0
+rich>=13.7.0
+streamlit>=1.28.0
+
+# Caching & Storage
+diskcache>=5.6.0
+python-dotenv>=1.0.0
+
+# Reporting
+reportlab>=4.0.0
+matplotlib>=3.8.0
+
+# NLP for Keyword Analysis
+rapidfuzz>=3.5.0
+
+# Async Support
+aiohttp>=3.9.0
+
+# Testing
+pytest>=7.4.0
+
+# Process Management
+psutil>=5.9.0
+
+# Multi-Source Data Integration
+pytrends>=4.9.2  # Google Trends API
+praw>=7.7.1  # Reddit API (optional)
+tweepy>=4.14.0  # Twitter API (optional)

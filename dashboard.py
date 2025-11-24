@@ -1,0 +1,3109 @@
+"""
+YouTube SEO AGI Tool - Streamlit Dashboard
+Interactive web dashboard for channel analysis and optimization.
+"""
+
+import streamlit as st
+import sys
+import os
+from dotenv import load_dotenv
+from datetime import datetime
+import pandas as pd
+
+# Load environment
+load_dotenv()
+
+# Add project root to path
+project_root = os.path.dirname(__file__)
+sys.path.insert(0, project_root)
+
+from src.utils.youtube_client import YouTubeClient, create_client
+from src.modules.channel_analyzer import ChannelAnalyzer
+from src.modules.keyword_researcher import KeywordResearcher
+from src.modules.competitor_analyzer import CompetitorAnalyzer
+from src.modules.title_optimizer import TitleOptimizer
+from src.modules.description_generator import DescriptionGenerator
+from src.modules.tag_suggester import TagSuggester
+from src.modules.trend_predictor import TrendPredictor
+from src.modules.proactive_advisor import ProactiveAdvisor
+from src.modules.performance_tracker import PerformanceTracker
+from src.modules.milestone_tracker import MilestoneTracker
+from src.modules.feedback_learner import FeedbackLearner
+from src.modules.viral_predictor import ViralPredictor
+from src.modules.competitor_benchmark import CompetitorBenchmark
+from src.modules.multi_source_integrator import MultiSourceIntegrator
+from src.modules.knowledge_graph import KnowledgeGraph
+from src.modules.continuous_learner import ContinuousLearner
+from src.modules.code_self_improver import CodeSelfImprover
+from src.modules.safety_ethics_layer import SafetyEthicsLayer
+from src.utils.i18n import t, get_language, set_language
+from src.utils.process_manager import ProcessManager
+
+# Page config
+st.set_page_config(
+    page_title="YouTube SEO AGI Tool",
+    page_icon="🎸",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Initialize session state
+if "client" not in st.session_state:
+    try:
+        # Initialize target channel and niche
+        if "target_channel" not in st.session_state:
+            st.session_state.target_channel = "anatolianturkishrock"
+        if "target_niche" not in st.session_state:
+            st.session_state.target_niche = "psychedelic anatolian rock"
+        
+        st.session_state.client = create_client()
+        st.session_state.channel_analyzer = ChannelAnalyzer(st.session_state.client)
+        st.session_state.keyword_researcher = KeywordResearcher(st.session_state.client)
+        st.session_state.competitor_analyzer = CompetitorAnalyzer(st.session_state.client)
+        st.session_state.title_optimizer = TitleOptimizer(st.session_state.keyword_researcher)
+        st.session_state.description_generator = DescriptionGenerator()
+        st.session_state.tag_suggester = TagSuggester(st.session_state.client)
+        st.session_state.trend_predictor = TrendPredictor(st.session_state.client)
+        st.session_state.proactive_advisor = ProactiveAdvisor(
+            st.session_state.client,
+            st.session_state.channel_analyzer,
+            st.session_state.competitor_analyzer
+        )
+        st.session_state.performance_tracker = PerformanceTracker(st.session_state.client)
+        st.session_state.milestone_tracker = MilestoneTracker(st.session_state.client)
+        st.session_state.feedback_learner = FeedbackLearner(
+            st.session_state.client,
+            st.session_state.performance_tracker
+        )
+        st.session_state.viral_predictor = ViralPredictor(
+            st.session_state.client,
+            st.session_state.channel_analyzer,
+            st.session_state.keyword_researcher
+        )
+        st.session_state.competitor_benchmark = CompetitorBenchmark(
+            st.session_state.client,
+            st.session_state.channel_analyzer,
+            st.session_state.competitor_analyzer
+        )
+        st.session_state.multi_source_integrator = MultiSourceIntegrator(st.session_state.client)
+        st.session_state.knowledge_graph = KnowledgeGraph(
+            st.session_state.client,
+            st.session_state.performance_tracker,
+            st.session_state.feedback_learner,
+            st.session_state.multi_source_integrator,
+            st.session_state.competitor_benchmark
+        )
+        st.session_state.continuous_learner = ContinuousLearner(
+            st.session_state.client,
+            st.session_state.performance_tracker,
+            st.session_state.feedback_learner,
+            st.session_state.multi_source_integrator,
+            st.session_state.knowledge_graph,
+            st.session_state.trend_predictor
+        )
+        st.session_state.code_self_improver = CodeSelfImprover(
+            st.session_state.client,
+            st.session_state.performance_tracker,
+            st.session_state.feedback_learner,
+            st.session_state.knowledge_graph,
+            st.session_state.viral_predictor
+        )
+        st.session_state.safety_ethics_layer = SafetyEthicsLayer()
+        st.session_state.process_manager = ProcessManager()
+    except Exception as e:
+        st.error(f"Error initializing: {e}")
+        st.stop()
+
+# Initialize target channel and niche if not set
+if "target_channel" not in st.session_state:
+    st.session_state.target_channel = "anatolianturkishrock"
+if "target_niche" not in st.session_state:
+    st.session_state.target_niche = "psychedelic anatolian rock"
+if "language" not in st.session_state:
+    st.session_state.language = "tr"  # Default to Turkish
+
+# Helper Functions
+def render_card(title, content, metric=None, icon="", color="default", subtitle=""):
+    """Render a card component with title, content, and optional metric."""
+    import html
+    
+    color_map = {
+        "default": "#333",
+        "success": "#28a745",
+        "warning": "#ffc107",
+        "error": "#dc3545",
+        "info": "#17a2b8"
+    }
+    metric_color = color_map.get(color, color_map["default"])
+    
+    # Use Streamlit container for better control
+    with st.container():
+        # Card wrapper with CSS
+        st.markdown(f"""
+        <style>
+        .card-wrapper {{
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 0.75rem 0;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }}
+        .card-title {{
+            margin: 0 0 0.5rem 0;
+            color: #333;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }}
+        .card-subtitle {{
+            color: #666;
+            font-size: 0.9rem;
+            margin: 0.3rem 0;
+        }}
+        .card-metric {{
+            font-size: 2rem;
+            font-weight: bold;
+            color: {metric_color};
+            margin: 0.5rem 0;
+        }}
+        .card-content {{
+            color: #555;
+            line-height: 1.6;
+            margin-top: 0.5rem;
+        }}
+        </style>
+        <div class="card-wrapper">
+        """, unsafe_allow_html=True)
+        
+        # Title
+        st.markdown(f"### {icon} {title}")
+        
+        # Subtitle
+        if subtitle:
+            st.caption(subtitle)
+        
+        # Metric
+        if metric:
+            st.markdown(f'<div class="card-metric">{html.escape(str(metric))}</div>', unsafe_allow_html=True)
+        
+        # Content - render as markdown to handle HTML properly
+        # Convert <br> to newlines and <b> to ** for markdown
+        content_str = str(content)
+        # Replace HTML tags with markdown equivalents
+        content_str = content_str.replace('<br>', '\n').replace('<br/>', '\n').replace('<br />', '\n')
+        content_str = content_str.replace('<b>', '**').replace('</b>', '**')
+        content_str = content_str.replace('<strong>', '**').replace('</strong>', '**')
+        # Remove other HTML tags but keep text
+        import re
+        content_str = re.sub(r'<[^>]+>', '', content_str)
+        
+        st.markdown(content_str)
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+
+def render_channel_niche_inputs():
+    """Render channel and niche input fields at the top of each page."""
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+    with col1:
+        channel = st.text_input(
+            t("forms.target_channel"), 
+            value=st.session_state.get("target_channel", "anatolianturkishrock"),
+            key=f"channel_input_{st.session_state.get('page_counter', 0)}",
+            help=t("forms.channel_help")
+        )
+        st.session_state.target_channel = channel.lstrip("@").strip()
+    with col2:
+        niche = st.text_input(
+            t("forms.niche"), 
+            value=st.session_state.get("target_niche", "psychedelic anatolian rock"),
+            key=f"niche_input_{st.session_state.get('page_counter', 0)}",
+            help=t("forms.niche_help")
+        )
+        st.session_state.target_niche = niche.strip()
+    st.markdown("---")
+
+# Sidebar
+with st.sidebar:
+    st.title(t("app.title"))
+    
+    # Language selector
+    st.markdown("---")
+    lang_options = {
+        "Türkçe": "tr",
+        "English": "en"
+    }
+    current_lang = get_language()
+    selected_lang_display = "Türkçe" if current_lang == "tr" else "English"
+    selected_lang = st.selectbox(
+        t("app.language_selector"),
+        options=list(lang_options.keys()),
+        index=0 if current_lang == "tr" else 1
+    )
+    if lang_options[selected_lang] != current_lang:
+        set_language(lang_options[selected_lang])
+        st.rerun()
+    
+    st.markdown("---")
+    st.markdown(f"**{t('common.target_channel')}:** @{st.session_state.target_channel}")
+    st.markdown(f"**{t('common.niche')}:** {st.session_state.target_niche.title()}")
+    st.markdown("---")
+    
+    page = st.selectbox(
+        t("navigation.dashboard") if current_lang == "tr" else "Navigation",
+        [
+            t("navigation.dashboard"),
+            t("navigation.channel_analysis"),
+            t("navigation.keyword_research"),
+            t("navigation.competitor_analysis"),
+            t("navigation.title_optimizer"),
+            t("navigation.description_generator"),
+            t("navigation.tag_suggester"),
+            t("navigation.trend_predictor"),
+            t("navigation.proactive_advisor"),
+            t("navigation.performance_tracking"),
+            t("navigation.milestone_tracker"),
+            t("navigation.feedback_learning"),
+            t("navigation.viral_predictor"),
+            t("navigation.competitor_benchmark"),
+            t("navigation.multi_source_data"),
+            t("navigation.knowledge_graph"),
+            t("navigation.continuous_learning"),
+            t("navigation.code_self_improvement"),
+            t("navigation.safety_ethics")
+        ]
+    )
+
+# Main content
+current_lang = get_language()
+
+# Helper function to check page
+def is_page(page_key):
+    """Check if current page matches the key."""
+    page_translations = {
+        "dashboard": [t("navigation.dashboard"), "📊 Dashboard", "📊 Kontrol Paneli"],
+        "channel_analysis": [t("navigation.channel_analysis"), "📈 Channel Analysis", "📈 Kanal Analizi"],
+        "keyword_research": [t("navigation.keyword_research"), "🔍 Keyword Research", "🔍 Anahtar Kelime Araştırması"],
+        "competitor_analysis": [t("navigation.competitor_analysis"), "⚔️ Competitor Analysis", "⚔️ Rakip Analizi"],
+        "title_optimizer": [t("navigation.title_optimizer"), "✏️ Title Optimizer", "✏️ Başlık Optimizasyonu"],
+        "description_generator": [t("navigation.description_generator"), "📝 Description Generator", "📝 Açıklama Üretici"],
+        "tag_suggester": [t("navigation.tag_suggester"), "🏷️ Tag Suggester", "🏷️ Etiket Önerici"],
+        "trend_predictor": [t("navigation.trend_predictor"), "📅 Trend Predictor", "📅 Trend Tahmincisi"],
+        "proactive_advisor": [t("navigation.proactive_advisor"), "💡 Proactive Advisor", "💡 Proaktif Danışman"],
+        "performance_tracking": [t("navigation.performance_tracking"), "📊 Performance Tracking", "📊 Performans Takibi"],
+        "milestone_tracker": [t("navigation.milestone_tracker"), "🎯 Milestone Tracker", "🎯 Milestone Takipçisi"],
+        "feedback_learning": [t("navigation.feedback_learning"), "🧠 Feedback Learning", "🧠 Geri Bildirim Öğrenme"],
+        "viral_predictor": [t("navigation.viral_predictor"), "🔥 Viral Predictor", "🔥 Viral Tahmincisi"],
+        "competitor_benchmark": [t("navigation.competitor_benchmark"), "📊 Competitor Benchmark", "📊 Rakip Kıyaslama"],
+        "multi_source_data": [t("navigation.multi_source_data"), "🌐 Multi-Source Data", "🌐 Çok Kaynaklı Veri"],
+        "knowledge_graph": [t("navigation.knowledge_graph"), "🧠 Knowledge Graph", "🧠 Bilgi Grafiği"],
+        "continuous_learning": [t("navigation.continuous_learning"), "🔄 Continuous Learning", "🔄 Sürekli Öğrenme"],
+        "code_self_improvement": [t("navigation.code_self_improvement"), "⚙️ Code Self-Improvement", "⚙️ Kod Kendini Geliştirme"],
+        "safety_ethics": [t("navigation.safety_ethics"), "🛡️ Safety & Ethics", "🛡️ Güvenlik ve Etik"]
+    }
+    return page in page_translations.get(page_key, [])
+
+if is_page("dashboard"):
+    st.title(t("pages.dashboard.title"))
+    st.markdown(t("pages.dashboard.description"))
+    
+    # Channel and Niche Inputs
+    render_channel_niche_inputs()
+    
+    # Quick stats in card grid
+    try:
+        channel_data = st.session_state.client.get_channel_by_handle(st.session_state.target_channel)
+        if channel_data.get("items"):
+            channel = channel_data["items"][0]
+            stats = channel["statistics"]
+            
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                render_card(
+                    title=t("common.subscribers"),
+                    content=t("cards.total_channel_subscribers"),
+                    metric=f"{int(stats.get('subscriberCount', 0)):,}",
+                    icon="👥",
+                    color="info"
+                )
+            with col2:
+                render_card(
+                    title=t("common.total_views"),
+                    content=t("cards.all_time_video_views"),
+                    metric=f"{int(stats.get('viewCount', 0)):,}",
+                    icon="👁️",
+                    color="info"
+                )
+            with col3:
+                render_card(
+                    title=t("common.videos"),
+                    content=t("cards.total_published_videos"),
+                    metric=f"{stats.get('videoCount', 0)}",
+                    icon="📹",
+                    color="info"
+                )
+            with col4:
+                avg_views = int(stats.get("viewCount", 0)) / max(int(stats.get("videoCount", 1)), 1)
+                render_card(
+                    title=t("common.avg_views_per_video"),
+                    content=t("cards.average_views_per_video"),
+                    metric=f"{avg_views:,.0f}",
+                    icon="📊",
+                    color="info"
+                )
+        else:
+            st.warning(t("messages.channel_not_found"))
+    except Exception as e:
+        st.error(t("messages.error_loading", error=str(e)))
+    
+    # Proactive suggestions in card format
+    st.markdown(f"### 💡 {t('pages.dashboard.proactive_suggestions')}")
+    
+    try:
+        suggestions = st.session_state.proactive_advisor.get_proactive_suggestions(st.session_state.target_channel)
+        
+        if suggestions.get("alerts"):
+            alert_cols = st.columns(min(len(suggestions["alerts"]), 3))
+            for idx, alert in enumerate(suggestions["alerts"]):
+                col_idx = idx % 3
+                with alert_cols[col_idx]:
+                    alert_type = alert.get("type", "info")
+                    color_map = {
+                        "warning": "warning",
+                        "error": "error",
+                        "info": "info"
+                    }
+                    render_card(
+                        title=alert.get("title", "Alert"),
+                        content=alert.get("message", ""),
+                        icon="⚠️" if alert_type == "warning" else "❌" if alert_type == "error" else "ℹ️",
+                        color=color_map.get(alert_type, "info")
+                    )
+        
+        if suggestions.get("suggestions"):
+            suggestion_cols = st.columns(min(len(suggestions["suggestions"]), 3))
+            for idx, suggestion in enumerate(suggestions["suggestions"]):
+                col_idx = idx % 3
+                with suggestion_cols[col_idx]:
+                    render_card(
+                        title=suggestion.get("title", "Suggestion"),
+                        content=suggestion.get("message", ""),
+                        icon="✅",
+                        color="success"
+                    )
+    except Exception as e:
+        st.error(f"Error loading suggestions: {e}")
+
+elif is_page("channel_analysis"):
+    st.title(t("pages.channel_analysis.title"))
+    
+    # Channel and Niche Inputs
+    render_channel_niche_inputs()
+    
+    if st.button(t("pages.channel_analysis.analyze_button"), use_container_width=True):
+        with st.spinner(t("messages.analyzing")):
+            try:
+                analysis = st.session_state.channel_analyzer.analyze_channel(st.session_state.target_channel)
+                
+                # Display results in card format
+                st.markdown(f"### {t('pages.channel_analysis.statistics')}")
+                stats = analysis["statistics"]
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    render_card(
+                        title=t("common.subscribers"),
+                        content=t("cards.total_channel_subscribers"),
+                        metric=f"{stats['subscribers']:,}",
+                        icon="👥",
+                        color="info"
+                    )
+                with col2:
+                    render_card(
+                        title=t("common.total_views"),
+                        content=t("cards.all_time_video_views"),
+                        metric=f"{stats['total_views']:,}",
+                        icon="👁️",
+                        color="info"
+                    )
+                with col3:
+                    render_card(
+                        title=t("common.avg_views_per_video"),
+                        content=t("cards.average_views_per_video"),
+                        metric=f"{stats['average_views_per_video']:,.0f}",
+                        icon="📊",
+                        color="info"
+                    )
+                
+                # Video Performance in card format
+                st.markdown(f"### {t('pages.channel_analysis.video_performance')}")
+                video_perf = analysis["video_performance"]
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    render_card(
+                        title=t("pages.channel_analysis.average_views"),
+                        content=t("cards.average_views_per_video"),
+                        metric=f"{video_perf.get('average_views', 0):,.0f}",
+                        icon="📹",
+                        color="info"
+                    )
+                with col2:
+                    render_card(
+                        title=t("pages.channel_analysis.average_likes"),
+                        content=t("pages.channel_analysis.average_likes"),
+                        metric=f"{video_perf.get('average_likes', 0):,.0f}",
+                        icon="👍",
+                        color="info"
+                    )
+                with col3:
+                    render_card(
+                        title=t("pages.channel_analysis.average_comments"),
+                        content=t("pages.channel_analysis.average_comments"),
+                        metric=f"{video_perf.get('average_comments', 0):,.0f}",
+                        icon="💬",
+                        color="info"
+                    )
+                
+                # Recommendations in card format
+                st.markdown(f"### {t('common.recommendations')}")
+                if analysis.get("recommendations"):
+                    rec_cols = st.columns(min(len(analysis["recommendations"]), 2))
+                    for idx, rec in enumerate(analysis["recommendations"]):
+                        col_idx = idx % 2
+                        with rec_cols[col_idx]:
+                            render_card(
+                                title=f"{t('cards.recommendation')} #{idx + 1}",
+                                content=rec,
+                                icon="💡",
+                                color="info"
+                            )
+                    
+            except Exception as e:
+                st.error(t("messages.error_loading", error=str(e)))
+
+elif is_page("keyword_research"):
+    st.title(t("pages.keyword_research.title"))
+    
+    # Channel and Niche Inputs
+    render_channel_niche_inputs()
+    
+    keywords_input = st.text_area(
+        t("pages.keyword_research.enter_keywords"),
+        value=f"{st.session_state.target_niche}\nturkish rock music\nanadolu rock"
+    )
+    
+    if st.button(t("pages.keyword_research.research_button"), use_container_width=True):
+        with st.spinner(t("messages.researching")):
+            try:
+                keywords = [k.strip() for k in keywords_input.split("\n") if k.strip()]
+                research = st.session_state.keyword_researcher.research_keywords(keywords)
+                
+                st.markdown(f"### {t('pages.keyword_research.found_keywords', count=research['total_keywords_found'])}")
+                
+                # Top keywords in card grid
+                st.markdown(f"### {t('pages.keyword_research.top_keywords')}")
+                ranked_keywords = research["ranked_keywords"][:20]
+                keyword_cols = st.columns(min(len(ranked_keywords), 3))
+                
+                for idx, keyword_data in enumerate(ranked_keywords):
+                    col_idx = idx % 3
+                    with keyword_cols[col_idx]:
+                        search_vol = keyword_data.get('search_volume', 'N/A')
+                        competition = keyword_data.get('competition', 'N/A')
+                        render_card(
+                            title=keyword_data.get("keyword", "N/A"),
+                            content=f"Arama Hacmi: {search_vol}<br>Rekabet: {competition}" if current_lang == "tr" else f"Search Volume: {search_vol}<br>Competition: {competition}",
+                            metric=f"{t('common.score')}: {keyword_data.get('score', 0):.1f}",
+                            icon="🔑",
+                            color="info",
+                            subtitle=f"{t('pages.keyword_research.rank')} #{idx + 1}"
+                        )
+                
+                # Display as table for detailed view
+                df = pd.DataFrame(ranked_keywords)
+                st.dataframe(df[["keyword", "score", "competition", "relevance"]])
+                
+                # Recommendations in card format
+                st.markdown(f"### {t('common.recommendations')}")
+                if research.get("recommendations"):
+                    rec_cols = st.columns(min(len(research["recommendations"]), 2))
+                    for idx, rec in enumerate(research["recommendations"]):
+                        col_idx = idx % 2
+                        with rec_cols[col_idx]:
+                            render_card(
+                                title=f"{t('cards.recommendation')} #{idx + 1}",
+                                content=rec,
+                                icon="💡",
+                                color="info"
+                            )
+                    
+            except Exception as e:
+                st.error(t("messages.error_loading", error=str(e)))
+
+elif is_page("competitor_analysis"):
+    st.title(t("pages.competitor_analysis.title"))
+    
+    # Channel and Niche Inputs
+    render_channel_niche_inputs()
+    
+    keywords_input = st.text_area(
+        t("pages.competitor_analysis.enter_keywords"),
+        value=f"{st.session_state.target_niche}\nturkish rock"
+    )
+    
+    if st.button(t("pages.competitor_analysis.find_button"), use_container_width=True):
+        with st.spinner(t("messages.loading")):
+            try:
+                keywords = [k.strip() for k in keywords_input.split("\n") if k.strip()]
+                competitors = st.session_state.competitor_analyzer.find_competitors(keywords, max_competitors=10)
+                
+                st.markdown(f"### {t('pages.competitor_analysis.found_competitors', count=len(competitors))}")
+                
+                # Competitors in card grid
+                competitor_cols = st.columns(min(len(competitors), 3))
+                for idx, competitor in enumerate(competitors):
+                    col_idx = idx % 3
+                    with competitor_cols[col_idx]:
+                        # Get channel title (try both field names for compatibility)
+                        channel_title = competitor.get("title") or competitor.get("channel_title", "Unknown")
+                        # Get channel handle
+                        channel_handle = competitor.get("channel_handle", "N/A")
+                        # Get relevance score (calculated in analyzer)
+                        relevance_score = competitor.get("relevance_score", 0.0)
+                        
+                        subscribers_text = t("common.subscribers") if current_lang == "tr" else "Subscribers"
+                        videos_text = t("common.videos") if current_lang == "tr" else "Videos"
+                        views_text = t("common.total_views") if current_lang == "tr" else "Views"
+                        
+                        render_card(
+                            title=channel_title,
+                            content=f"{subscribers_text}: {competitor.get('subscribers', 0):,}<br>{videos_text}: {competitor.get('video_count', 0)}<br>{views_text}: {competitor.get('total_views', 0):,}",
+                            metric=f"{t('common.score')}: {relevance_score:.2f}",
+                            icon="⚔️",
+                            color="info",
+                            subtitle=f"@{channel_handle}" if channel_handle != "N/A" else f"ID: {competitor.get('channel_id', 'N/A')[:15]}..."
+                        )
+                
+                # Detailed table view
+                df = pd.DataFrame(competitors)
+                st.dataframe(df)
+                
+            except Exception as e:
+                st.error(t("messages.error_loading", error=str(e)))
+
+elif is_page("title_optimizer"):
+    st.title(t("pages.title_optimizer.title"))
+    
+    # Channel and Niche Inputs
+    render_channel_niche_inputs()
+    
+    title = st.text_input(t("pages.title_optimizer.enter_title"), value="GEL I 70's Psychedelic Turkish Rock")
+    song_name = st.text_input(t("pages.title_optimizer.song_name"), value="GEL")
+    
+    if st.button(t("pages.title_optimizer.generate_button"), use_container_width=True):
+        with st.spinner(t("messages.generating")):
+            try:
+                variations = st.session_state.title_optimizer.generate_title_variations(
+                    title, song_name, num_variations=5
+                )
+                
+                st.markdown(f"### {t('pages.title_optimizer.variations')}")
+                # Title variations in card grid
+                title_cols = st.columns(min(len(variations), 2))
+                for idx, var in enumerate(variations):
+                    col_idx = idx % 2
+                    with title_cols[col_idx]:
+                        length_label = t("pages.title_optimizer.length")
+                        keywords_label = t("pages.title_optimizer.keywords_found")
+                        structure_label = t("pages.title_optimizer.structure")
+                        rec_label = t("cards.recommendation")
+                        chars_text = "karakter" if current_lang == "tr" else "characters"
+                        
+                        render_card(
+                            title=f"#{idx + 1} - {var['title'][:40]}...",
+                            content=f"<b>{length_label}:</b> {var['length']} {chars_text}<br><b>{keywords_label}:</b> {', '.join(var['keywords_found'][:3])}<br><b>{structure_label}:</b> {var['structure']}<br><b>{rec_label}:</b> {var['recommendation']}",
+                            metric=f"{t('common.score')}: {var['seo_score']}",
+                            icon="✏️",
+                            color="success" if var['seo_score'] >= 80 else "warning" if var['seo_score'] >= 60 else "info"
+                        )
+                        
+            except Exception as e:
+                st.error(t("messages.error_loading", error=str(e)))
+
+elif is_page("description_generator"):
+    st.title(t("pages.description_generator.title"))
+    
+    # Channel and Niche Inputs
+    render_channel_niche_inputs()
+    
+    video_title = st.text_input(t("pages.description_generator.video_title"), value="GEL I 70's Psychedelic Turkish Rock")
+    song_name = st.text_input(t("pages.description_generator.song_name"), value="GEL")
+    custom_info = st.text_area(t("pages.description_generator.custom_info"))
+    
+    if st.button(t("pages.description_generator.generate_button"), use_container_width=True):
+        with st.spinner(t("messages.generating")):
+            try:
+                result = st.session_state.description_generator.generate_description(
+                    video_title, song_name, custom_info=custom_info
+                )
+                
+                st.markdown(f"### {t('pages.description_generator.generated_description')}")
+                st.text_area("", result["description"], height=400)
+                
+                # Analysis in card format
+                st.markdown(f"### {t('common.analysis')}")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    render_card(
+                        title=t("pages.description_generator.word_count"),
+                        content=t("pages.description_generator.word_count"),
+                        metric=f"{result['word_count']}",
+                        icon="📝",
+                        color="info"
+                    )
+                with col2:
+                    render_card(
+                        title=t("pages.description_generator.character_count"),
+                        content=t("pages.description_generator.character_count"),
+                        metric=f"{result['character_count']}",
+                        icon="🔤",
+                        color="info"
+                    )
+                with col3:
+                    render_card(
+                        title=t("pages.description_generator.hashtags"),
+                        content=t("pages.description_generator.hashtags"),
+                        metric=f"{result['hashtag_count']}",
+                        icon="🏷️",
+                        color="info"
+                    )
+                
+                # SEO Score in card
+                st.markdown(f"### {t('pages.description_generator.seo_score')}")
+                seo_score = result['analysis']['seo_score']
+                score_color = "success" if seo_score >= 80 else "warning" if seo_score >= 60 else "error"
+                render_card(
+                    title=t("pages.description_generator.seo_score"),
+                    content=t("pages.description_generator.seo_score"),
+                    metric=f"{seo_score}/100",
+                    icon="📊",
+                    color=score_color
+                )
+                
+                st.subheader(t("common.recommendations"))
+                for rec in result["analysis"]["recommendations"]:
+                    st.info(rec)
+                    
+            except Exception as e:
+                st.error(t("messages.error_loading", error=str(e)))
+
+elif is_page("tag_suggester"):
+    st.title(t("pages.tag_suggester.title"))
+    
+    # Channel and Niche Inputs
+    render_channel_niche_inputs()
+    
+    video_title = st.text_input(t("pages.tag_suggester.video_title"), value="GEL I 70's Psychedelic Turkish Rock")
+    song_name = st.text_input(t("pages.tag_suggester.song_name"), value="GEL")
+    
+    if st.button(t("pages.tag_suggester.suggest_button"), use_container_width=True):
+        with st.spinner(t("messages.generating")):
+            try:
+                result = st.session_state.tag_suggester.suggest_tags(video_title, song_name)
+                
+                st.markdown(f"### {t('pages.tag_suggester.suggested_tags')}")
+                tags_text = ", ".join(result["suggested_tags"])
+                st.text_area(t("pages.tag_suggester.copy_tags"), tags_text, height=100)
+                
+                # Analysis in card format
+                st.markdown(f"### {t('common.analysis')}")
+                col1, col2 = st.columns(2)
+                with col1:
+                    render_card(
+                        title=t("pages.tag_suggester.total_tags"),
+                        content=t("pages.tag_suggester.total_tags"),
+                        metric=f"{result['tag_count']}",
+                        icon="🏷️",
+                        color="info"
+                    )
+                with col2:
+                    opt_score = result['analysis']['optimization_score']
+                    score_color = "success" if opt_score >= 80 else "warning" if opt_score >= 60 else "error"
+                    render_card(
+                        title=t("pages.tag_suggester.optimization_score"),
+                        content=t("pages.tag_suggester.optimization_score"),
+                        metric=f"{opt_score}/100",
+                        icon="📊",
+                        color=score_color
+                    )
+                
+                # Best Practices in card format
+                st.markdown(f"### {t('pages.tag_suggester.best_practices')}")
+                if result.get("best_practices"):
+                    practice_cols = st.columns(min(len(result["best_practices"]), 2))
+                    for idx, practice in enumerate(result["best_practices"]):
+                        col_idx = idx % 2
+                        with practice_cols[col_idx]:
+                            render_card(
+                                title=f"{t('cards.best_practice')} #{idx + 1}",
+                                content=practice,
+                                icon="✅",
+                                color="info"
+                            )
+                    
+            except Exception as e:
+                st.error(t("messages.error_loading", error=str(e)))
+
+elif is_page("trend_predictor"):
+    st.title(t("pages.trend_predictor.title"))
+    
+    # Channel and Niche Inputs
+    render_channel_niche_inputs()
+    
+    if st.button(t("pages.trend_predictor.predict_button"), use_container_width=True):
+        with st.spinner(t("messages.analyzing")):
+            try:
+                predictions = st.session_state.trend_predictor.predict_trends(
+                    niche=st.session_state.target_niche
+                )
+                
+                # Recent Trends in card format
+                st.markdown(f"### {t('pages.trend_predictor.recent_trends')}")
+                recent_trends = predictions.get("recent_trends", {})
+                if recent_trends:
+                    # Get trending keywords
+                    trending_keywords = recent_trends.get("trending_keywords", [])
+                    if trending_keywords:
+                        st.markdown(f"#### {t('pages.trend_predictor.trending_keywords')}")
+                        keyword_cols = st.columns(min(len(trending_keywords[:6]), 3))
+                        for idx, keyword_data in enumerate(trending_keywords[:6]):
+                            col_idx = idx % 3
+                            with keyword_cols[col_idx]:
+                                count_text = "Tekrar" if current_lang == "tr" else "mentions"
+                                render_card(
+                                    title=keyword_data.get("word", t("common.count")),
+                                    content=f"{t('common.count')}: {keyword_data.get('count', 0)} {count_text}",
+                                    metric=f"{keyword_data.get('count', 0)}",
+                                    icon="📈",
+                                    color="info"
+                                )
+                    
+                    # Get trending themes
+                    trending_themes = recent_trends.get("trending_themes", [])
+                    if trending_themes:
+                        st.markdown(f"#### {t('pages.trend_predictor.trending_themes')}")
+                        theme_cols = st.columns(min(len(trending_themes[:6]), 3))
+                        for idx, theme_data in enumerate(trending_themes[:6]):
+                            col_idx = idx % 3
+                            with theme_cols[col_idx]:
+                                count_text = "Tekrar" if current_lang == "tr" else "mentions"
+                                render_card(
+                                    title=theme_data.get("theme", t("common.count")),
+                                    content=f"{t('common.count')}: {theme_data.get('count', 0)} {count_text}",
+                                    metric=f"{theme_data.get('count', 0)}",
+                                    icon="🎨",
+                                    color="success"
+                                )
+                
+                # Predictions in card format
+                st.markdown(f"### {t('pages.trend_predictor.predictions')}")
+                future_predictions = predictions.get("predictions", [])
+                if future_predictions:
+                    pred_cols = st.columns(min(len(future_predictions[:4]), 2))
+                    for idx, pred in enumerate(future_predictions[:4]):
+                        col_idx = idx % 2
+                        with pred_cols[col_idx]:
+                            # Handle both keyword and theme predictions
+                            pred_title = pred.get("keyword") or pred.get("theme", t("common.analysis"))
+                            trend_dir = pred.get("trend_direction", "Unknown")
+                            confidence = pred.get("confidence", "Unknown")
+                            action = pred.get("recommended_action", "N/A")
+                            
+                            trend_label = t("pages.trend_predictor.trend")
+                            conf_label = t("pages.trend_predictor.confidence")
+                            action_label = t("pages.trend_predictor.action")
+                            
+                            render_card(
+                                title=pred_title,
+                                content=f"<b>{trend_label}:</b> {trend_dir}<br><b>{conf_label}:</b> {confidence}<br><b>{action_label}:</b> {action}",
+                                icon="🔮",
+                                color="info"
+                            )
+                
+                # Recommendations in card format
+                st.markdown(f"### {t('common.recommendations')}")
+                if predictions.get("recommendations"):
+                    rec_cols = st.columns(min(len(predictions["recommendations"]), 2))
+                    for idx, rec in enumerate(predictions["recommendations"]):
+                        col_idx = idx % 2
+                        with rec_cols[col_idx]:
+                            render_card(
+                                title=f"{t('cards.recommendation')} #{idx + 1}",
+                                content=rec,
+                                icon="💡",
+                                color="info"
+                            )
+                
+                # Best Posting Times in card format
+                st.markdown(f"### {t('pages.trend_predictor.best_posting_times')}")
+                posting_times = st.session_state.trend_predictor.get_best_posting_times(st.session_state.target_channel)
+                if posting_times:
+                    best_times_dict = posting_times.get("best_times", {})
+                    timezone = posting_times.get("timezone", "UTC+3")
+                    
+                    # Convert dictionary to list of day-time pairs
+                    day_time_list = []
+                    for day, times in best_times_dict.items():
+                        for time in times:
+                            day_time_list.append({
+                                "day": day.capitalize(),
+                                "time": time,
+                                "score": 1.0  # All times are equally good in this implementation
+                            })
+                    
+                    if day_time_list:
+                        timezone_label = t("pages.trend_predictor.timezone")
+                        st.markdown(f"**{timezone_label}:** {timezone}")
+                        time_cols = st.columns(min(len(day_time_list[:12]), 3))
+                        for idx, time_data in enumerate(day_time_list[:12]):
+                            col_idx = idx % 3
+                            with time_cols[col_idx]:
+                                time_label = "Saat" if current_lang == "tr" else "Time"
+                                render_card(
+                                    title=time_data.get("day", "Day"),
+                                    content=f"{time_label}: {time_data.get('time', 'N/A')}",
+                                    icon="⏰",
+                                    color="success"
+                                )
+                    
+                    # Show recommendations
+                    recommendations = posting_times.get("recommendations", [])
+                    if recommendations:
+                        st.markdown(f"#### {t('pages.trend_predictor.recommendations')}")
+                        for rec in recommendations:
+                            st.info(f"💡 {rec}")
+                    
+                    # Show next optimal post time
+                    next_optimal = posting_times.get("next_optimal_post", {})
+                    if next_optimal:
+                        st.markdown(f"#### {t('pages.trend_predictor.next_optimal_post')}")
+                        reason_label = "Sebep" if current_lang == "tr" else "Reason"
+                        time_label = "Saat" if current_lang == "tr" else "Time"
+                        render_card(
+                            title=next_optimal.get("day", "Day"),
+                            content=f"{time_label}: {next_optimal.get('time', 'N/A')}<br>{reason_label}: {next_optimal.get('reason', 'N/A')}",
+                            icon="🎯",
+                            color="warning"
+                        )
+                    
+            except Exception as e:
+                st.error(t("messages.error_loading", error=str(e)))
+
+elif is_page("proactive_advisor"):
+    st.title(t("pages.proactive_advisor.title"))
+    
+    # Channel and Niche Inputs
+    render_channel_niche_inputs()
+    
+    if st.button(t("pages.proactive_advisor.get_suggestions_button"), use_container_width=True):
+        with st.spinner(t("messages.analyzing")):
+            try:
+                suggestions = st.session_state.proactive_advisor.get_proactive_suggestions(st.session_state.target_channel)
+                
+                # Alerts in card format
+                st.markdown(f"### {t('common.alerts')}")
+                if suggestions.get("alerts"):
+                    alert_cols = st.columns(min(len(suggestions["alerts"]), 3))
+                    for idx, alert in enumerate(suggestions["alerts"]):
+                        col_idx = idx % 3
+                        with alert_cols[col_idx]:
+                            alert_type = alert.get("type", "info")
+                            color_map = {
+                                "warning": "warning",
+                                "error": "error",
+                                "info": "info"
+                            }
+                            render_card(
+                                title=alert.get("title", t("cards.alert")),
+                                content=alert.get("message", ""),
+                                icon="⚠️" if alert_type == "warning" else "❌" if alert_type == "error" else "ℹ️",
+                                color=color_map.get(alert_type, "info")
+                            )
+                
+                # Suggestions in card format
+                st.markdown(f"### {t('common.suggestions')}")
+                if suggestions.get("suggestions"):
+                    suggestion_cols = st.columns(min(len(suggestions["suggestions"]), 3))
+                    for idx, suggestion in enumerate(suggestions["suggestions"]):
+                        col_idx = idx % 3
+                        with suggestion_cols[col_idx]:
+                            render_card(
+                                title=suggestion.get("title", t("cards.suggestion")),
+                                content=suggestion.get("message", ""),
+                                icon="✅",
+                                color="success"
+                            )
+                
+                # Content Ideas in card format
+                st.markdown(f"### {t('pages.proactive_advisor.content_ideas')}")
+                if suggestions.get("content_ideas"):
+                    idea_cols = st.columns(min(len(suggestions["content_ideas"]), 2))
+                    for idx, idea in enumerate(suggestions["content_ideas"]):
+                        col_idx = idx % 2
+                        with idea_cols[col_idx]:
+                            reason_label = t("pages.proactive_advisor.reason")
+                            difficulty_label = t("pages.proactive_advisor.difficulty")
+                            render_card(
+                                title=idea.get("idea", t("cards.content_idea")),
+                                content=f"<b>{reason_label}:</b> {idea.get('reason', 'N/A')}<br><b>{difficulty_label}:</b> {idea.get('difficulty', 'N/A')}",
+                                icon="💡",
+                                color="info"
+                            )
+                
+                # Priority Actions in card format
+                st.markdown(f"### {t('pages.proactive_advisor.priority_actions')}")
+                if suggestions.get("priority_actions"):
+                    action_cols = st.columns(min(len(suggestions["priority_actions"]), 2))
+                    for idx, action in enumerate(suggestions["priority_actions"]):
+                        col_idx = idx % 2
+                        with action_cols[col_idx]:
+                            render_card(
+                                title=f"{t('pages.proactive_advisor.priority_actions')} #{idx + 1}",
+                                content=action,
+                                icon="🎯",
+                                color="warning"
+                            )
+                    
+            except Exception as e:
+                st.error(t("messages.error_loading", error=str(e)))
+
+elif is_page("performance_tracking"):
+    st.title("📊 Performance Tracking & Self-Improvement")
+    st.markdown("Track recommendation performance and learn from successes/failures")
+    
+    # Channel and Niche Inputs
+    render_channel_niche_inputs()
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("📸 Take Snapshot", use_container_width=True):
+            with st.spinner("Taking performance snapshot..."):
+                try:
+                    snapshot = st.session_state.performance_tracker.track_snapshot(st.session_state.target_channel)
+                    if "error" not in snapshot:
+                        st.success("✅ Snapshot recorded!")
+                        st.json(snapshot)
+                    else:
+                        st.error(f"Error: {snapshot.get('error')}")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    
+    with col2:
+        if st.button("📈 Analyze Growth Trend", use_container_width=True):
+            with st.spinner("Analyzing growth trend..."):
+                try:
+                    trend = st.session_state.performance_tracker.analyze_growth_trend(st.session_state.target_channel, days=30)
+                    st.subheader("Growth Trend Analysis (30 days)")
+                    st.json(trend)
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    
+    if st.button("🧠 Learn from Recommendations", use_container_width=True):
+        with st.spinner("Analyzing learned patterns..."):
+            try:
+                learned = st.session_state.performance_tracker.learn_from_recommendations()
+                st.subheader("Learned Patterns")
+                st.json(learned)
+            except Exception as e:
+                st.error(f"Error: {e}")
+    
+    if st.button("📋 Get Performance Summary", use_container_width=True):
+        with st.spinner("Generating performance summary..."):
+            try:
+                summary = st.session_state.performance_tracker.get_performance_summary(st.session_state.target_channel)
+                
+                # Current Metrics in card grid
+                st.markdown("### Current Metrics")
+                metrics = summary.get("current_metrics", {})
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    render_card(
+                        title="Subscribers",
+                        content="Total channel subscribers",
+                        metric=f"{metrics.get('subscribers', 0):,}",
+                        icon="👥",
+                        color="info"
+                    )
+                with col2:
+                    render_card(
+                        title="Total Views",
+                        content="All-time video views",
+                        metric=f"{metrics.get('total_views', 0):,}",
+                        icon="👁️",
+                        color="info"
+                    )
+                with col3:
+                    render_card(
+                        title="Videos",
+                        content="Total published videos",
+                        metric=f"{metrics.get('total_videos', 0)}",
+                        icon="📹",
+                        color="info"
+                    )
+                with col4:
+                    render_card(
+                        title="Avg Views/Video",
+                        content="Average views per video",
+                        metric=f"{metrics.get('average_views_per_video', 0):,.0f}",
+                        icon="📊",
+                        color="info"
+                    )
+                
+                # Growth Trend in card format
+                st.markdown("### Growth Trend")
+                growth = summary.get("growth_trend", {})
+                if growth.get("status") != "insufficient_data":
+                    growth_data = growth.get("growth", {})
+                    sub_growth = growth_data.get("subscribers", {})
+                    
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        render_card(
+                            title="Subscriber Growth",
+                            content="Growth over analysis period",
+                            metric=f"{sub_growth.get('change', 0):,}",
+                            icon="📈",
+                            color="success"
+                        )
+                    with col2:
+                        render_card(
+                            title="Daily Average Growth",
+                            content="Average daily subscriber growth",
+                            metric=f"{sub_growth.get('daily_average', 0):.2f}",
+                            icon="📅",
+                            color="info"
+                        )
+                    with col3:
+                        render_card(
+                            title="Growth Rate",
+                            content="Percentage growth rate",
+                            metric=f"{sub_growth.get('growth_rate_percent', 0):.2f}%",
+                            icon="📊",
+                            color="info"
+                        )
+                    
+                    projection = growth.get("projection", {})
+                    if projection.get("days_to_1m"):
+                        st.markdown("### Projection to 1M Subscribers")
+                        render_card(
+                            title="Days to 1M",
+                            content=f"Projected date: {datetime.fromisoformat(projection['projected_date']).strftime('%Y-%m-%d')}" if projection.get("projected_date") else "Based on current growth rate",
+                            metric=f"{projection.get('days_to_1m', 0):,.0f}",
+                            icon="🎯",
+                            color="warning"
+                        )
+                else:
+                    render_card(
+                        title="Insufficient Data",
+                        content="Need more snapshots to analyze growth trend. Take snapshots regularly!",
+                        icon="ℹ️",
+                        color="warning"
+                    )
+                
+                # Recommendations in card format
+                st.markdown("### Recommendations")
+                if summary.get("recommendations"):
+                    rec_cols = st.columns(min(len(summary["recommendations"]), 2))
+                    for idx, rec in enumerate(summary["recommendations"]):
+                        col_idx = idx % 2
+                        with rec_cols[col_idx]:
+                            render_card(
+                                title=f"Recommendation #{idx + 1}",
+                                content=rec,
+                                icon="💡",
+                                color="info"
+                            )
+                    
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+elif is_page("milestone_tracker"):
+    st.title(t("pages.milestone_tracker.title"))
+    st.markdown("Track your progress toward 1 million subscribers!")
+    
+    # Channel and Niche Inputs
+    render_channel_niche_inputs()
+    
+    if st.button("🔄 Update Status", use_container_width=True):
+        with st.spinner("Checking milestone status..."):
+            try:
+                status = st.session_state.milestone_tracker.get_current_status(st.session_state.target_channel)
+                
+                if "error" in status:
+                    st.error(f"Error: {status.get('error')}")
+                else:
+                    # Current Status in card format
+                    st.markdown("### Current Status")
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        render_card(
+                            title="Current Subscribers",
+                            content=f"Target: 1,000,000 subscribers",
+                            metric=f"{status['current_subscribers']:,}",
+                            icon="👥",
+                            color="info",
+                            subtitle=f"+{status['current_subscribers'] - 11:,}" if status['current_subscribers'] > 11 else ""
+                        )
+                    with col2:
+                        render_card(
+                            title="Overall Progress",
+                            content="Progress toward 1M subscribers",
+                            metric=f"{status['overall_progress_percent']:.3f}%",
+                            icon="📊",
+                            color="info"
+                        )
+                    with col3:
+                        next_milestone = status.get("next_milestone")
+                        if next_milestone:
+                            render_card(
+                                title="Next Milestone",
+                                content=f"{status['progress_to_next']['subscribers_needed']:,} subscribers needed",
+                                metric=next_milestone["name"],
+                                icon="🎯",
+                                color="warning"
+                            )
+                    
+                    # Progress Bar in card
+                    st.markdown("### Progress to Next Milestone")
+                    progress = status.get("progress_to_next", {})
+                    render_card(
+                        title="Progress",
+                        content=f"{progress.get('subscribers_needed', 0):,} subscribers needed to reach next milestone",
+                        metric=f"{progress.get('percent', 0):.1f}%",
+                        icon="📈",
+                        color="info"
+                    )
+                    st.progress(progress.get("percent", 0) / 100)
+                    
+                    # Motivation in card
+                    render_card(
+                        title="Motivation",
+                        content=status.get('motivation', 'Keep going!'),
+                        icon="💪",
+                        color="success"
+                    )
+                    
+                    # Time Estimates in card grid
+                    st.markdown("### ⏱️ Time Estimates to Next Milestone")
+                    estimates = status.get("time_estimates", {})
+                    estimate_cols = st.columns(min(len([e for e in estimates.values() if e.get("days_needed")]), 3))
+                    estimate_idx = 0
+                    for scenario, data in estimates.items():
+                        if data.get("days_needed"):
+                            col_idx = estimate_idx % 3
+                            with estimate_cols[col_idx]:
+                                days = data["days_needed"]
+                                render_card(
+                                    title=scenario.title(),
+                                    content=f"{data['daily_growth']} subs/day<br>Estimated: {days:,.0f} days",
+                                    metric=f"{days:,.0f} days",
+                                    icon="⏱️",
+                                    color="info"
+                                )
+                            estimate_idx += 1
+                    
+                    # Strategy
+                    st.subheader("🎯 Milestone Strategy")
+                    strategy = status.get("strategy", {})
+                    st.write(f"**Focus:** {strategy.get('focus', 'N/A')}")
+                    
+                    st.write("**Key Actions:**")
+                    for action in strategy.get("key_actions", []):
+                        st.write(f"• {action}")
+                    
+                    with st.expander("📝 Content Tips"):
+                        for tip in strategy.get("content_tips", []):
+                            st.write(f"• {tip}")
+                    
+                    with st.expander("🚀 Growth Hacks"):
+                        for hack in strategy.get("growth_hacks", []):
+                            st.write(f"• {hack}")
+                    
+                    # Achieved Milestones
+                    achieved = status.get("achieved_milestones", [])
+                    if achieved:
+                        st.subheader("🏆 Achieved Milestones")
+                        for milestone in achieved:
+                            st.success(f"✅ {milestone['name']} - Level: {milestone['level']}")
+                    
+            except Exception as e:
+                st.error(f"Error: {e}")
+    
+    # Milestone History
+    if st.button("📜 View Milestone History", use_container_width=True):
+        with st.spinner("Loading milestone history..."):
+            try:
+                history = st.session_state.milestone_tracker.get_milestone_history()
+                st.subheader("Milestone History")
+                st.json(history)
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+elif is_page("feedback_learning"):
+    st.title(t("pages.feedback_learning.title"))
+    st.markdown("Learn from user feedback and recommendation performance")
+    
+    # Channel and Niche Inputs
+    render_channel_niche_inputs()
+    
+    tab1, tab2, tab3, tab4 = st.tabs(["Record Feedback", "Analyze Patterns", "Growth Patterns", "Improvements"])
+    
+    with tab1:
+        st.subheader("Record Feedback on Recommendation")
+        
+        recommendation_id = st.text_input("Recommendation ID", placeholder="rec_12345")
+        feedback_type = st.selectbox(
+            "Feedback Type",
+            ["accepted", "rejected", "modified", "applied"]
+        )
+        rating = st.slider("Rating (1-5)", 1, 5, 3)
+        notes = st.text_area("Notes (optional)")
+        video_id = st.text_input("Video ID (optional)", placeholder="dQw4w9WgXcQ")
+        
+        if st.button("Record Feedback", use_container_width=True):
+            with st.spinner("Recording feedback..."):
+                try:
+                    feedback_data = {
+                        "rating": rating,
+                        "notes": notes
+                    }
+                    st.session_state.feedback_learner.record_feedback(
+                        recommendation_id,
+                        feedback_type,
+                        feedback_data,
+                        video_id if video_id else None
+                    )
+                    st.success("✅ Feedback recorded!")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+        
+        if st.button("Correlate with Performance", use_container_width=True):
+            with st.spinner("Analyzing correlation..."):
+                try:
+                    correlation = st.session_state.feedback_learner.correlate_with_performance(
+                        recommendation_id,
+                        video_id if video_id else None
+                    )
+                    st.subheader("Correlation Analysis")
+                    st.json(correlation)
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    
+    with tab2:
+        st.subheader("Analyze Learned Patterns")
+        
+        if st.button("Analyze All Patterns", use_container_width=True):
+            with st.spinner("Analyzing patterns..."):
+                try:
+                    patterns = st.session_state.feedback_learner.analyze_patterns()
+                    
+                    st.subheader("Pattern Summary")
+                    summary = patterns.get("summary", {})
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Total Feedback", summary.get("total_feedback", 0))
+                    with col2:
+                        st.metric("Types Analyzed", summary.get("types_analyzed", 0))
+                    with col3:
+                        st.metric("Best Type", summary.get("best_performing_type", "N/A"))
+                    
+                    st.subheader("Performance by Type")
+                    by_type = patterns.get("by_type", {})
+                    for rec_type, stats in by_type.items():
+                        with st.expander(f"📋 {rec_type}"):
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("Acceptance Rate", f"{stats.get('acceptance_rate', 0):.1f}%")
+                            with col2:
+                                st.metric("Average Rating", f"{stats.get('average_rating', 0):.2f}")
+                            with col3:
+                                st.metric("Success Score", f"{stats.get('success_score', 0):.2f}")
+                    
+                    st.subheader("Insights")
+                    for insight in patterns.get("insights", []):
+                        st.info(insight)
+                        
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    
+    with tab3:
+        st.subheader("Subscriber Growth Patterns")
+        
+        if st.button("Analyze Growth Patterns", use_container_width=True):
+            with st.spinner("Analyzing growth patterns..."):
+                try:
+                    growth_patterns = st.session_state.feedback_learner.learn_subscriber_growth_patterns()
+                    
+                    st.subheader("Growth Pattern Analysis")
+                    st.metric("Growth Periods Analyzed", growth_patterns.get("growth_periods_analyzed", 0))
+                    st.metric("Patterns Identified", growth_patterns.get("patterns_identified", 0))
+                    
+                    st.subheader("Best Growth Patterns")
+                    best_patterns = growth_patterns.get("best_growth_patterns", [])
+                    for pattern in best_patterns:
+                        stats = pattern.get("stats", {})
+                        with st.expander(f"📈 {pattern.get('type', 'Unknown')}"):
+                            st.metric("Times Used", stats.get("times_used", 0))
+                            st.metric("Avg Subscriber Growth", f"{stats.get('average_subscriber_growth', 0):.1f}")
+                            st.metric("Total Growth", f"{stats.get('total_growth', 0):,}")
+                    
+                    st.subheader("Insights")
+                    for insight in growth_patterns.get("insights", []):
+                        st.success(insight)
+                        
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    
+    with tab4:
+        st.subheader("Get Improvement Suggestions")
+        
+        recommendation_type = st.selectbox(
+            "Recommendation Type",
+            ["title", "description", "tags", "thumbnail", "timing"]
+        )
+        
+        if st.button("Get Improvements", use_container_width=True):
+            with st.spinner("Generating improvements..."):
+                try:
+                    improvements = st.session_state.feedback_learner.get_recommendation_improvements(recommendation_type)
+                    
+                    if improvements.get("status") == "insufficient_data":
+                        st.info(improvements.get("message"))
+                    else:
+                        st.subheader(f"Improvements for {recommendation_type}")
+                        
+                        current = improvements.get("current_performance", {})
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Success Score", f"{current.get('success_score', 0):.2f}")
+                        with col2:
+                            st.metric("Acceptance Rate", f"{current.get('acceptance_rate', 0):.1f}%")
+                        with col3:
+                            st.metric("Average Rating", f"{current.get('average_rating', 0):.2f}")
+                        
+                        st.subheader("Improvement Suggestions")
+                        for improvement in improvements.get("improvements", []):
+                            st.warning(improvement)
+                        
+                        st.subheader("Specific Recommendations")
+                        for rec in improvements.get("recommendations", []):
+                            st.info(rec)
+                        
+                        st.subheader("Successful Examples")
+                        examples = improvements.get("successful_examples", [])
+                        for example in examples[:3]:
+                            st.json(example)
+                            
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+elif is_page("viral_predictor"):
+    st.title(t("pages.viral_predictor.title"))
+    st.markdown("Predict viral potential before publishing")
+    
+    # Channel and Niche Inputs
+    render_channel_niche_inputs()
+    
+    tab1, tab2 = st.tabs(["Predict Viral Potential", "Learn from Viral Content"])
+    
+    with tab1:
+        st.subheader("Analyze Content for Viral Potential")
+        
+        title = st.text_input("Video Title", value="GEL I 70's Psychedelic Turkish Rock")
+        description = st.text_area("Video Description", height=150)
+        tags_input = st.text_input("Tags (comma-separated)", value="psychedelic, anatolian rock, turkish rock, 70s")
+        song_name = st.text_input("Song Name (optional)", value="GEL")
+        niche = st.text_input("Niche", value=st.session_state.target_niche)
+        
+        if st.button("Predict Viral Potential", use_container_width=True):
+            with st.spinner("Analyzing viral potential..."):
+                try:
+                    tags = [t.strip() for t in tags_input.split(",") if t.strip()]
+                    prediction = st.session_state.viral_predictor.predict_viral_potential(
+                        title, description, tags, song_name, niche
+                    )
+                    
+                    # Viral Score
+                    viral_score = prediction.get("viral_score", 0)
+                    potential_level = prediction.get("potential_level", "unknown")
+                    
+                    # Viral Score in card
+                    st.markdown("### Viral Potential Score")
+                    score_color = "success" if viral_score >= 0.7 else "warning" if viral_score >= 0.5 else "error"
+                    render_card(
+                        title="Viral Score",
+                        content=f"Potential Level: {potential_level.replace('_', ' ').title()}",
+                        metric=f"{viral_score:.2f}",
+                        icon="🔥",
+                        color=score_color
+                    )
+                    st.progress(viral_score)
+                    
+                    # Indicators in card grid
+                    st.markdown("### Viral Indicators Breakdown")
+                    indicators = prediction.get("indicators", {})
+                    indicator_cols = st.columns(min(len(indicators), 3))
+                    for idx, (indicator, score) in enumerate(indicators.items()):
+                        col_idx = idx % 3
+                        with indicator_cols[col_idx]:
+                            render_card(
+                                title=indicator.replace('_', ' ').title(),
+                                content=f"Indicator strength",
+                                metric=f"{score:.2f}",
+                                icon="📊",
+                                color="info"
+                            )
+                            st.progress(score)
+                    
+                    # Recommendation in card
+                    st.markdown("### Recommendation")
+                    render_card(
+                        title="Recommendation",
+                        content=prediction.get("recommendation", ""),
+                        icon="💡",
+                        color="info"
+                    )
+                    
+                    # Improvements in card grid
+                    improvements = prediction.get("improvements", [])
+                    if improvements:
+                        st.markdown("### Improvement Suggestions")
+                        improvement_cols = st.columns(min(len(improvements), 2))
+                        for idx, improvement in enumerate(improvements):
+                            col_idx = idx % 2
+                            with improvement_cols[col_idx]:
+                                render_card(
+                                    title=f"Suggestion #{idx + 1}",
+                                    content=improvement,
+                                    icon="⚠️",
+                                    color="warning"
+                                )
+                    
+                    # Confidence in card
+                    confidence = prediction.get("confidence", 0)
+                    render_card(
+                        title="Prediction Confidence",
+                        content="Confidence level of this prediction",
+                        metric=f"{confidence:.1%}",
+                        icon="🎯",
+                        color="success" if confidence >= 0.7 else "warning"
+                    )
+                    
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    
+    with tab2:
+        st.subheader("Learn from Viral Content")
+        
+        video_id = st.text_input("Viral Video ID", placeholder="dQw4w9WgXcQ")
+        
+        if st.button("Analyze Viral Video", use_container_width=True):
+            with st.spinner("Learning from viral content..."):
+                try:
+                    learned = st.session_state.viral_predictor.learn_from_viral_content(video_id)
+                    
+                    if learned.get("status") == "learned":
+                        st.success("✅ Patterns learned from viral content!")
+                        
+                        st.subheader("Learned Patterns")
+                        patterns = learned.get("patterns", {})
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Title Length", f"{patterns.get('title_length', 0)} chars")
+                            st.metric("Views", f"{patterns.get('views', 0):,}")
+                        with col2:
+                            st.metric("Description Length", f"{patterns.get('description_length', 0)} chars")
+                            st.metric("Likes", f"{patterns.get('likes', 0):,}")
+                        with col3:
+                            st.metric("Tag Count", patterns.get("tag_count", 0))
+                            st.metric("Comments", f"{patterns.get('comments', 0):,}")
+                        
+                        st.subheader("Insights")
+                        for insight in learned.get("insights", []):
+                            st.info(insight)
+                    else:
+                        st.warning(learned.get("message", "Could not learn from this video"))
+                        
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+elif is_page("competitor_benchmark"):
+    st.title(t("pages.competitor_benchmark.title"))
+    st.markdown("Learn from 1M+ subscriber channels")
+    
+    # Channel and Niche Inputs
+    render_channel_niche_inputs()
+    
+    tab1, tab2, tab3 = st.tabs(["Benchmark Channel", "Differentiation", "Learned Strategies"])
+    
+    with tab1:
+        st.subheader("Benchmark a Successful Channel")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            channel_handle = st.text_input("Channel Handle", placeholder="@channelname")
+        with col2:
+            channel_id = st.text_input("Channel ID (alternative)", placeholder="UC...")
+        
+        if st.button("Benchmark Channel", use_container_width=True):
+            with st.spinner("Benchmarking channel..."):
+                try:
+                    result = st.session_state.competitor_benchmark.benchmark_channel(
+                        channel_handle if channel_handle else None,
+                        channel_id if channel_id else None
+                    )
+                    
+                    if result.get("error"):
+                        st.error(result.get("error"))
+                    elif result.get("status") == "below_threshold":
+                        st.warning(f"⚠️ {result.get('message')}")
+                    elif result.get("status") == "success":
+                        st.success("✅ Channel benchmarked successfully!")
+                        
+                        benchmark = result.get("benchmark", {})
+                        
+                        st.subheader("Channel Metrics")
+                        col1, col2, col3, col4 = st.columns(4)
+                        with col1:
+                            st.metric("Subscribers", f"{benchmark.get('subscribers', 0):,}")
+                        with col2:
+                            st.metric("Total Views", f"{benchmark.get('total_views', 0):,}")
+                        with col3:
+                            st.metric("Videos", benchmark.get("total_videos", 0))
+                        with col4:
+                            st.metric("Avg Views/Video", f"{benchmark.get('average_views_per_video', 0):,.0f}")
+                        
+                        # Content Strategy in card format
+                        st.markdown("### Content Strategy")
+                        strategy = benchmark.get("content_strategy", {})
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            render_card(
+                                title="Avg Title Length",
+                                content="Average title length",
+                                metric=f"{strategy.get('average_title_length', 0):.0f} chars",
+                                icon="✏️",
+                                color="info"
+                            )
+                        with col2:
+                            render_card(
+                                title="Upload Frequency",
+                                content="Days between uploads",
+                                metric=f"{strategy.get('upload_frequency_days', 0):.1f} days",
+                                icon="📅",
+                                color="info"
+                            )
+                        with col3:
+                            render_card(
+                                title="Engagement Rate",
+                                content="Average engagement rate",
+                                metric=f"{strategy.get('engagement_rate', 0):.2f}%",
+                                icon="💬",
+                                color="info"
+                            )
+                        
+                        # Best Practices in card format
+                        st.markdown("### Best Practices")
+                        if benchmark.get("best_practices"):
+                            practice_cols = st.columns(min(len(benchmark["best_practices"]), 2))
+                            for idx, practice in enumerate(benchmark["best_practices"]):
+                                col_idx = idx % 2
+                                with practice_cols[col_idx]:
+                                    render_card(
+                                        title=f"Best Practice #{idx + 1}",
+                                        content=practice,
+                                        icon="✅",
+                                        color="success"
+                                    )
+                        
+                        # Insights in card format
+                        st.markdown("### Insights")
+                        if result.get("insights"):
+                            insight_cols = st.columns(min(len(result["insights"]), 2))
+                            for idx, insight in enumerate(result["insights"]):
+                                col_idx = idx % 2
+                                with insight_cols[col_idx]:
+                                    render_card(
+                                        title=f"Insight #{idx + 1}",
+                                        content=insight,
+                                        icon="💡",
+                                        color="info"
+                                    )
+                            
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    
+    with tab2:
+        st.subheader("Find Differentiation Opportunities")
+        
+        if st.button("Analyze Opportunities", use_container_width=True):
+            with st.spinner("Finding differentiation opportunities..."):
+                try:
+                    opportunities = st.session_state.competitor_benchmark.find_differentiation_opportunities(
+                        st.session_state.target_channel
+                    )
+                    
+                    if opportunities.get("status") == "no_benchmarks":
+                        render_card(
+                            title="No Benchmarks",
+                            content=opportunities.get("message", ""),
+                            icon="⚠️",
+                            color="warning"
+                        )
+                    else:
+                        st.markdown("### Differentiation Opportunities")
+                        render_card(
+                            title="Total Opportunities",
+                            content="Differentiation opportunities found",
+                            metric=f"{opportunities.get('total_opportunities', 0)}",
+                            icon="🎯",
+                            color="info"
+                        )
+                        
+                        high_priority = opportunities.get("high_priority", [])
+                        if high_priority:
+                            st.markdown("### 🔴 High Priority")
+                            high_pri_cols = st.columns(min(len(high_priority), 2))
+                            for idx, opp in enumerate(high_priority):
+                                col_idx = idx % 2
+                                with high_pri_cols[col_idx]:
+                                    render_card(
+                                        title=opp.get('type', 'Unknown').replace('_', ' ').title(),
+                                        content=f"{opp.get('opportunity', '')}<br><b>Benchmark:</b> {opp.get('benchmark', 'N/A')}",
+                                        icon="🔴",
+                                        color="error"
+                                    )
+                        
+                        medium_priority = opportunities.get("medium_priority", [])
+                        if medium_priority:
+                            st.markdown("### 🟡 Medium Priority")
+                            med_pri_cols = st.columns(min(len(medium_priority), 2))
+                            for idx, opp in enumerate(medium_priority):
+                                col_idx = idx % 2
+                                with med_pri_cols[col_idx]:
+                                    render_card(
+                                        title=opp.get('type', 'Unknown').replace('_', ' ').title(),
+                                        content=f"{opp.get('opportunity', '')}<br><b>Benchmark:</b> {opp.get('benchmark', 'N/A')}",
+                                        icon="🟡",
+                                        color="warning"
+                                    )
+                            
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    
+    with tab3:
+        st.subheader("Learned Strategies from All Benchmarks")
+        
+        if st.button("Get Learned Strategies", use_container_width=True):
+            with st.spinner("Analyzing learned strategies..."):
+                try:
+                    strategies = st.session_state.competitor_benchmark.get_learned_strategies()
+                    
+                    if strategies.get("status") == "no_data":
+                        st.info(strategies.get("message"))
+                    else:
+                        learned = strategies.get("learned_strategies", {})
+                        
+                        st.subheader("Aggregated Strategies")
+                        st.metric("Channels Analyzed", learned.get("channels_analyzed", 0))
+                        
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            avg_title = learned.get("average_title_length")
+                            if avg_title:
+                                st.metric("Avg Title Length", f"{avg_title:.0f} chars")
+                        with col2:
+                            avg_freq = learned.get("average_upload_frequency")
+                            if avg_freq:
+                                st.metric("Avg Upload Frequency", f"{avg_freq:.1f} days")
+                        with col3:
+                            avg_engagement = learned.get("average_engagement_rate")
+                            if avg_engagement:
+                                st.metric("Avg Engagement Rate", f"{avg_engagement:.2f}%")
+                        
+                        # Most Common Themes
+                        themes = learned.get("most_common_themes", [])
+                        if themes:
+                            st.subheader("Most Common Content Themes")
+                            st.write(", ".join(themes))
+                        
+                        # Best Practices
+                        practices = learned.get("common_best_practices", [])
+                        if practices:
+                            st.subheader("Common Best Practices")
+                            for practice in practices:
+                                st.info(f"✅ {practice}")
+                        
+                        # Recommendations
+                        st.subheader("Recommendations")
+                        for rec in strategies.get("recommendations", []):
+                            st.success(rec)
+                            
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+elif is_page("multi_source_data"):
+    st.title(t("pages.multi_source_data.title"))
+    st.markdown("Integrate data from Google Trends, Reddit, Twitter, and more")
+    
+    # Channel and Niche Inputs
+    render_channel_niche_inputs()
+    
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "Synthesize Opportunities", 
+        "Google Trends", 
+        "Reddit Trends", 
+        "Twitter Trends",
+        "Data Source Status"
+    ])
+    
+    with tab1:
+        st.subheader("Synthesize Viral Content Opportunities")
+        st.markdown("Combine data from all sources to identify viral opportunities")
+        
+        keywords_input = st.text_area(
+            "Keywords (one per line)",
+            value=f"{st.session_state.target_niche}\nturkish rock\nanadolu rock\n70s rock"
+        )
+        niche = st.text_input("Niche", value=st.session_state.target_niche)
+        
+        if st.button("Synthesize Opportunities", use_container_width=True):
+            with st.spinner("Analyzing multiple data sources..."):
+                try:
+                    keywords = [k.strip() for k in keywords_input.split("\n") if k.strip()]
+                    opportunities = st.session_state.multi_source_integrator.synthesize_opportunities(
+                        keywords, niche
+                    )
+                    
+                    st.markdown("### Data Sources Analyzed")
+                    sources = opportunities.get("sources_analyzed", [])
+                    source_cols = st.columns(min(len(sources), 4))
+                    for idx, source in enumerate(sources):
+                        col_idx = idx % 4
+                        with source_cols[col_idx]:
+                            render_card(
+                                title=source,
+                                content="Data source analyzed",
+                                icon="✅",
+                                color="success"
+                            )
+                    
+                    # Viral Opportunities in card grid
+                    viral_opps = opportunities.get("viral_opportunities", [])
+                    if viral_opps:
+                        st.subheader(f"🔥 Top {len(viral_opps)} Viral Opportunities")
+                        for i, opp in enumerate(viral_opps, 1):
+                            with st.expander(f"#{i} - {opp.get('type', 'Unknown').replace('_', ' ').title()} - Potential: {opp.get('viral_potential', 0):.1%}"):
+                                st.write(f"**Source:** {opp.get('source', 'N/A')}")
+                                st.write(f"**Opportunity:** {opp.get('opportunity', 'N/A')}")
+                                if opp.get('title'):
+                                    st.write(f"**Title:** {opp.get('title')}")
+                                if opp.get('score'):
+                                    st.metric("Engagement Score", opp.get('score'))
+                                if opp.get('relevance'):
+                                    st.metric("Relevance", f"{opp.get('relevance'):.1%}")
+                    else:
+                        st.info("No viral opportunities identified. Try different keywords or check data sources.")
+                    
+                    # Trending Topics
+                    trending = opportunities.get("trending_topics", [])
+                    if trending:
+                        st.subheader("📈 Trending Topics")
+                        for topic in trending[:5]:
+                            st.info(f"**{topic.get('source')}** - {topic.get('title', 'N/A')} (Score: {topic.get('score', 0)})")
+                    
+                    # Recommendations
+                    recommendations = opportunities.get("recommendations", [])
+                    if recommendations:
+                        st.subheader("💡 Recommendations")
+                        for rec in recommendations:
+                            st.success(rec)
+                            
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    
+    with tab2:
+        st.subheader("Google Trends Analysis")
+        
+        keywords_input = st.text_input("Keywords (comma-separated)", value="psychedelic rock, anatolian rock, turkish rock")
+        region = st.selectbox("Region", ["TR", "US", "GB", "DE", "FR"], index=0)
+        timeframe = st.selectbox(
+            "Timeframe",
+            ["today 3-m", "today 12-m", "today 5-y"],
+            index=0
+        )
+        
+        if st.button("Get Google Trends", use_container_width=True):
+            with st.spinner("Fetching Google Trends data..."):
+                try:
+                    keywords = [k.strip() for k in keywords_input.split(",") if k.strip()]
+                    trends = st.session_state.multi_source_integrator.get_google_trends(
+                        keywords, region, timeframe
+                    )
+                    
+                    if trends.get("error"):
+                        st.error(trends.get("error"))
+                    else:
+                        st.subheader("Trending Keywords")
+                        trend_data = trends.get("trends", {})
+                        for keyword, data in trend_data.items():
+                            with st.expander(f"📊 {keyword}"):
+                                st.metric("Interest Score", data.get("interest_score", 0))
+                                st.write(f"**Trending:** {data.get('trending', False)}")
+                                if data.get("note"):
+                                    st.info(data.get("note"))
+                                    
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    
+    with tab3:
+        st.subheader("Reddit Trends")
+        
+        subreddits_input = st.text_input(
+            "Subreddits (comma-separated)",
+            value="turkishrock, psychedelicrock, music, listentothis"
+        )
+        limit = st.slider("Posts per subreddit", 5, 25, 10)
+        
+        if st.button("Get Reddit Trends", use_container_width=True):
+            with st.spinner("Fetching Reddit trends..."):
+                try:
+                    subreddits = [s.strip() for s in subreddits_input.split(",") if s.strip()]
+                    reddit_data = st.session_state.multi_source_integrator.get_reddit_trends(
+                        subreddits, limit
+                    )
+                    
+                    if reddit_data.get("error"):
+                        st.warning(reddit_data.get("error"))
+                    
+                    st.markdown("### Trending Posts")
+                    trending_posts = reddit_data.get("trending_posts", {})
+                    for subreddit, posts in trending_posts.items():
+                        if posts:
+                            st.markdown(f"#### r/{subreddit}")
+                            post_cols = st.columns(min(len(posts[:5]), 2))
+                            for idx, post in enumerate(posts[:5]):
+                                col_idx = idx % 2
+                                with post_cols[col_idx]:
+                                    render_card(
+                                        title=post.get('title', 'N/A')[:50] + "..." if len(post.get('title', '')) > 50 else post.get('title', 'N/A'),
+                                        content=f"<b>Upvotes:</b> {post.get('score', 0)}<br><b>Comments:</b> {post.get('comments', 0)}<br><b>URL:</b> <a href='{post.get('url', '')}' target='_blank'>View Post</a>",
+                                        icon="🔥",
+                                        color="info"
+                                    )
+                        else:
+                            render_card(
+                                title=f"r/{subreddit}",
+                                content="No posts found",
+                                icon="ℹ️",
+                                color="warning"
+                            )
+                            
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    
+    with tab4:
+        st.subheader("Twitter/X Trends")
+        
+        keywords_input = st.text_input("Keywords (comma-separated)", value="psychedelic rock, turkish rock")
+        region = st.selectbox("Region", ["Turkey", "United States", "Global"], index=0)
+        
+        if st.button("Get Twitter Trends", use_container_width=True):
+            with st.spinner("Fetching Twitter trends..."):
+                try:
+                    keywords = [k.strip() for k in keywords_input.split(",") if k.strip()]
+                    twitter_data = st.session_state.multi_source_integrator.get_twitter_trends(
+                        keywords, region
+                    )
+                    
+                    if twitter_data.get("note"):
+                        st.info(twitter_data.get("note"))
+                    
+                    st.subheader("Twitter Trends")
+                    trends = twitter_data.get("trends", {})
+                    for keyword, data in trends.items():
+                        with st.expander(f"🐦 {keyword}"):
+                            st.write(f"**Tweet Count:** {data.get('tweet_count', 'N/A')}")
+                            st.write(f"**Trending:** {data.get('trending', False)}")
+                            if data.get("note"):
+                                st.info(data.get("note"))
+                                
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    
+    with tab5:
+        st.subheader("Data Source Status")
+        
+        if st.button("Check Data Sources", use_container_width=True):
+            with st.spinner("Checking data sources..."):
+                try:
+                    status = st.session_state.multi_source_integrator.get_data_source_status()
+                    
+                    st.metric("Active Sources", f"{status.get('active_sources', 0)}/{status.get('total_sources', 0)}")
+                    
+                    st.subheader("Source Details")
+                    sources = status.get("sources", {})
+                    for source_name, source_info in sources.items():
+                        with st.expander(f"{source_name} - {source_info.get('status', 'unknown').upper()}"):
+                            st.write(f"**Status:** {source_info.get('status', 'N/A')}")
+                            st.write(f"**Configured:** {source_info.get('configured', False)}")
+                            st.write(f"**Note:** {source_info.get('note', 'N/A')}")
+                            
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+elif is_page("knowledge_graph"):
+    st.title(t("pages.knowledge_graph.title"))
+    st.markdown("Unified knowledge graph integrating all data sources")
+    
+    # Channel and Niche Inputs
+    render_channel_niche_inputs()
+    
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "Build Graph",
+        "Detect Contradictions",
+        "Resolve Contradictions",
+        "Growth Patterns",
+        "Query Graph"
+    ])
+    
+    with tab1:
+        st.subheader("Build Knowledge Graph")
+        st.markdown("Integrate all data sources into unified knowledge graph")
+        
+        if st.button("Build Knowledge Graph", use_container_width=True):
+            with st.spinner("Building knowledge graph from all sources..."):
+                try:
+                    result = st.session_state.knowledge_graph.build_graph(st.session_state.target_channel)
+                    
+                    st.success("✅ Knowledge graph built successfully!")
+                    
+                    # Graph stats in card format
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        render_card(
+                            title="Nodes",
+                            content="Total nodes in graph",
+                            metric=f"{result.get('nodes_count', 0)}",
+                            icon="🔵",
+                            color="info"
+                        )
+                    with col2:
+                        render_card(
+                            title="Edges",
+                            content="Total connections in graph",
+                            metric=f"{result.get('edges_count', 0)}",
+                            icon="🔗",
+                            color="info"
+                        )
+                    with col3:
+                        render_card(
+                            title="Patterns",
+                            content="Growth patterns identified",
+                            metric=f"{result.get('patterns_count', 0)}",
+                            icon="📊",
+                            color="info"
+                        )
+                    
+                    # Show graph structure
+                    graph = result.get("graph", {})
+                    nodes = graph.get("nodes", {})
+                    
+                    # Node types breakdown
+                    node_types = {}
+                    for node in nodes.values():
+                        node_type = node.get("type", "unknown")
+                        node_types[node_type] = node_types.get(node_type, 0) + 1
+                    
+                    st.subheader("Graph Structure")
+                    for node_type, count in node_types.items():
+                        st.write(f"**{node_type.title()}:** {count} nodes")
+                    
+                    # Show patterns
+                    patterns = graph.get("patterns", {})
+                    if patterns:
+                        st.subheader("Extracted Patterns")
+                        for pattern_id, pattern_data in patterns.items():
+                            with st.expander(f"📊 {pattern_data.get('pattern_type', 'Unknown').replace('_', ' ').title()}"):
+                                st.write(f"**Description:** {pattern_data.get('description', 'N/A')}")
+                                st.write(f"**Value:** {pattern_data.get('value', 'N/A')}")
+                                st.metric("Confidence", f"{pattern_data.get('confidence', 0):.1%}")
+                                
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    
+    with tab2:
+        st.subheader("Detect Contradictions")
+        st.markdown("Find contradictory recommendations and patterns")
+        
+        if st.button("Detect Contradictions", use_container_width=True):
+            with st.spinner("Analyzing for contradictions..."):
+                try:
+                    contradictions = st.session_state.knowledge_graph.detect_contradictions()
+                    
+                    # Contradictions count in card
+                    contr_count = contradictions.get("contradictions_count", 0)
+                    render_card(
+                        title="Contradictions Found",
+                        content="Total contradictions detected in knowledge graph",
+                        metric=f"{contr_count}",
+                        icon="⚠️",
+                        color="error" if contr_count > 0 else "success"
+                    )
+                    
+                    # Severity breakdown in card grid
+                    severity = contradictions.get("severity_breakdown", {})
+                    if severity:
+                        st.markdown("### Severity Breakdown")
+                        sev_cols = st.columns(min(len(severity), 3))
+                        for idx, (sev, count) in enumerate(severity.items()):
+                            col_idx = idx % 3
+                            with sev_cols[col_idx]:
+                                render_card(
+                                    title=sev.title(),
+                                    content="Contradictions of this severity",
+                                    metric=f"{count}",
+                                    icon="⚠️",
+                                    color="error" if sev == "high" else "warning" if sev == "medium" else "info"
+                                )
+                    
+                    # Contradictions list in card grid
+                    contr_list = contradictions.get("contradictions", [])
+                    if contr_list:
+                        st.markdown("### Detected Contradictions")
+                        contr_cols = st.columns(min(len(contr_list), 2))
+                        for idx, contr in enumerate(contr_list):
+                            col_idx = idx % 2
+                            with contr_cols[col_idx]:
+                                render_card(
+                                    title=f"#{idx + 1} - {contr.get('type', 'Unknown').replace('_', ' ').title()}",
+                                    content=f"<b>Pattern:</b> {contr.get('pattern', 'N/A')}<br><b>Severity:</b> {contr.get('severity', 'unknown')}<br><b>Recommendation:</b> {contr.get('recommendation', 'N/A')}<br><b>Reality:</b> {contr.get('reality', 'N/A')}",
+                                    icon="⚠️",
+                                    color="error" if contr.get('severity') == 'high' else "warning"
+                                )
+                    else:
+                        render_card(
+                            title="No Contradictions",
+                            content="Knowledge graph is consistent!",
+                            icon="✅",
+                            color="success"
+                        )
+                        
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    
+    with tab3:
+        st.subheader("Resolve Contradictions")
+        st.markdown("Resolve detected contradictions using evidence-based approach")
+        
+        if st.button("Resolve Contradictions", use_container_width=True):
+            with st.spinner("Resolving contradictions..."):
+                try:
+                    resolution = st.session_state.knowledge_graph.resolve_contradictions()
+                    
+                    resolved_count = resolution.get("resolved_count", 0)
+                    if resolved_count > 0:
+                        st.success(f"✅ Resolved {resolved_count} contradiction(s)!")
+                        
+                        st.subheader("Resolutions")
+                        resolutions = resolution.get("resolutions", [])
+                        for i, res in enumerate(resolutions, 1):
+                            with st.expander(f"Resolution #{i}"):
+                                contr = res.get("contradiction", {})
+                                resol = res.get("resolution", {})
+                                
+                                st.write(f"**Contradiction:** {contr.get('type', 'Unknown').replace('_', ' ').title()}")
+                                st.write(f"**Action:** {resol.get('action', 'N/A').replace('_', ' ').title()}")
+                                st.write(f"**Reason:** {resol.get('reason', 'N/A')}")
+                                st.info(f"💡 {resol.get('recommendation', 'N/A')}")
+                    else:
+                        st.info("No contradictions to resolve.")
+                        
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    
+    with tab4:
+        st.subheader("Subscriber Growth Patterns")
+        st.markdown("Identify patterns that lead to subscriber growth")
+        
+        if st.button("Analyze Growth Patterns", use_container_width=True):
+            with st.spinner("Analyzing growth patterns..."):
+                try:
+                    patterns = st.session_state.knowledge_graph.get_subscriber_growth_patterns()
+                    
+                    if patterns.get("status") == "insufficient_data":
+                        render_card(
+                            title="Insufficient Data",
+                            content=patterns.get("message", ""),
+                            icon="⚠️",
+                            color="warning"
+                        )
+                    else:
+                        pattern_data = patterns.get("patterns", {})
+                        
+                        # Title Patterns in card format
+                        title_patterns = pattern_data.get("title_patterns", {})
+                        if title_patterns:
+                            st.markdown("### 📝 Title Patterns")
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                render_card(
+                                    title="Average Length",
+                                    content="Average title length for growth",
+                                    metric=f"{title_patterns.get('average_length', 0):.0f} chars",
+                                    icon="✏️",
+                                    color="info"
+                                )
+                            with col2:
+                                render_card(
+                                    title="Optimal Range",
+                                    content="Optimal title length range",
+                                    metric=title_patterns.get("optimal_range", "N/A"),
+                                    icon="📏",
+                                    color="info"
+                                )
+                            if title_patterns.get("common_words"):
+                                st.markdown("**Common Words:**")
+                                word_cols = st.columns(min(len(title_patterns["common_words"]), 5))
+                                for idx, word in enumerate(title_patterns["common_words"][:10]):
+                                    col_idx = idx % 5
+                                    with word_cols[col_idx]:
+                                        render_card(
+                                            title=word,
+                                            content="",
+                                            icon="🔑",
+                                            color="info"
+                                        )
+                        
+                        # Timing Patterns in card format
+                        timing_patterns = pattern_data.get("timing_patterns", {})
+                        if timing_patterns:
+                            st.markdown("### ⏰ Timing Patterns")
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                if timing_patterns.get("best_hour") is not None:
+                                    render_card(
+                                        title="Best Hour",
+                                        content="Optimal posting hour",
+                                        metric=f"{timing_patterns['best_hour']}:00",
+                                        icon="⏰",
+                                        color="success"
+                                    )
+                            with col2:
+                                if timing_patterns.get("best_day"):
+                                    render_card(
+                                        title="Best Day",
+                                        content="Optimal posting day",
+                                        metric=timing_patterns["best_day"],
+                                        icon="📅",
+                                        color="success"
+                                    )
+                        
+                        # Content Patterns in card format
+                        content_patterns = pattern_data.get("content_patterns", {})
+                        if content_patterns:
+                            st.markdown("### 📄 Content Patterns")
+                            render_card(
+                                title="Average Description Length",
+                                content="Optimal description length",
+                                metric=f"{content_patterns.get('average_description_length', 0):.0f} chars",
+                                icon="📝",
+                                color="info"
+                            )
+                            if content_patterns.get("common_tags"):
+                                st.markdown("**Common Tags:**")
+                                tag_cols = st.columns(min(len(content_patterns["common_tags"][:10]), 5))
+                                for idx, tag in enumerate(content_patterns["common_tags"][:10]):
+                                    col_idx = idx % 5
+                                    with tag_cols[col_idx]:
+                                        render_card(
+                                            title=tag,
+                                            content="",
+                                            icon="🏷️",
+                                            color="info"
+                                        )
+                        
+                        # Recommendation Patterns
+                        rec_patterns = pattern_data.get("recommendation_patterns", {})
+                        if rec_patterns:
+                            st.subheader("✅ Recommendation Patterns")
+                            best_type = rec_patterns.get("best_performing_type")
+                            if best_type:
+                                st.metric("Best Performing Type", best_type)
+                            
+                            by_type = rec_patterns.get("by_type", {})
+                            if by_type:
+                                st.write("**Success Rates by Type:**")
+                                for rec_type, stats in by_type.items():
+                                    st.metric(
+                                        rec_type.title(),
+                                        f"{stats.get('success_rate', 0):.1f}%",
+                                        f"{stats.get('success', 0)}/{stats.get('total', 0)}"
+                                    )
+                        
+                        # Insights
+                        insights = patterns.get("insights", [])
+                        if insights:
+                            st.subheader("💡 Key Insights")
+                            for insight in insights:
+                                st.success(insight)
+                                
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    
+    with tab5:
+        st.subheader("Query Knowledge Graph")
+        st.markdown("Query the knowledge graph for specific information")
+        
+        query_type = st.selectbox(
+            "Query Type",
+            ["videos", "recommendations", "patterns", "contradictions"]
+        )
+        
+        filters = {}
+        if query_type == "videos":
+            min_views = st.number_input("Minimum Views", min_value=0, value=0)
+            if min_views > 0:
+                filters["min_views"] = min_views
+        
+        if query_type == "recommendations":
+            status_filter = st.selectbox(
+                "Status Filter",
+                ["all", "pending", "applied", "success", "failure", "rejected"]
+            )
+            if status_filter != "all":
+                filters["status"] = status_filter
+        
+        if st.button("Execute Query", use_container_width=True):
+            with st.spinner("Querying knowledge graph..."):
+                try:
+                    results = st.session_state.knowledge_graph.query_graph(query_type, filters if filters else None)
+                    
+                    if results.get("error"):
+                        st.error(results.get("error"))
+                    else:
+                        st.metric("Results Found", results.get("count", 0))
+                        
+                        result_list = results.get("results", [])
+                        if result_list:
+                            st.subheader("Query Results")
+                            # Show first 10 results
+                            for i, result in enumerate(result_list[:10], 1):
+                                with st.expander(f"Result #{i}"):
+                                    st.json(result)
+                        else:
+                            st.info("No results found.")
+                            
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+elif is_page("continuous_learning"):
+    st.title(t("pages.continuous_learning.title"))
+    st.markdown("Automated learning system that runs continuously")
+    
+    # Channel and Niche Inputs
+    render_channel_niche_inputs()
+    
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "Learning Status",
+        "Daily Report",
+        "Weekly Report",
+        "Learning History"
+    ])
+    
+    with tab1:
+        st.subheader("Learning Loop Status")
+        
+        # Check process status
+        process_status = st.session_state.process_manager.get_status()
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if not process_status.get("running"):
+                if st.button("▶️ Start Learning Loop", use_container_width=True):
+                    with st.spinner("Starting continuous learning process..."):
+                        try:
+                            result = st.session_state.process_manager.start_process(st.session_state.target_channel)
+                            if result.get("status") == "started":
+                                st.success("✅ Learning process started!")
+                                st.info(f"Process ID: {result.get('pid')}")
+                                st.info("💡 The learning loop will continue running even if you close this page!")
+                                st.rerun()
+                            else:
+                                st.warning(result.get("message"))
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+            else:
+                st.info("🟢 Learning process is running")
+        
+        with col2:
+            if process_status.get("running"):
+                if st.button("⏹️ Stop Learning Loop", use_container_width=True):
+                    with st.spinner("Stopping learning process..."):
+                        try:
+                            result = st.session_state.process_manager.stop_process()
+                            if result.get("status") == "stopped":
+                                st.success("✅ Learning process stopped!")
+                                st.rerun()
+                            else:
+                                st.warning(result.get("message"))
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+            else:
+                st.info("⚪ Learning process is stopped")
+        
+        # Auto-refresh status
+        st.markdown("---")
+        st.subheader("Current Status")
+        
+        # Process status
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if process_status.get("running"):
+                st.success("🟢 Process Running")
+                st.caption(f"PID: {process_status.get('pid')}")
+            else:
+                st.info("⚪ Process Stopped")
+        with col2:
+            st.metric("Channel", f"@{process_status.get('channel_handle', 'N/A')}")
+        with col3:
+            # Get learning data status
+            try:
+                learning_status = st.session_state.continuous_learner.get_learning_status()
+                total_sessions = learning_status.get("total_sessions", 0)
+                st.metric("Total Sessions", total_sessions)
+            except:
+                st.metric("Total Sessions", "N/A")
+        
+        # Learning data info
+        try:
+            learning_status = st.session_state.continuous_learner.get_learning_status()
+            last_learning = learning_status.get("last_learning")
+            if last_learning:
+                st.write(f"**Last Learning:** {datetime.fromisoformat(last_learning).strftime('%Y-%m-%d %H:%M')}")
+            else:
+                st.write("**Last Learning:** Never")
+            
+            st.write(f"**Learning Interval:** {learning_status.get('interval_seconds', 3600) / 60:.0f} minutes")
+        except Exception as e:
+            st.warning(f"Could not load learning data: {e}")
+        
+        # Important note
+        if process_status.get("running"):
+            st.info("💡 **Note:** The learning process runs as a separate Python process. It will continue running even if you close the dashboard or navigate away from this page. Use the 'Stop' button to terminate it.")
+        else:
+            st.warning("⚠️ **Note:** The learning process is not running. Click 'Start Learning Loop' to begin continuous learning.")
+    
+    with tab2:
+        st.subheader("Generate Daily Learning Report")
+        
+        if st.button("📊 Generate Daily Report", use_container_width=True):
+            with st.spinner("Generating daily report..."):
+                try:
+                    report = st.session_state.continuous_learner.generate_daily_report(st.session_state.target_channel)
+                    
+                    st.success(f"✅ Daily Report for {report.get('date', 'N/A')}")
+                    
+                    # Summary
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Learning Sessions", report.get("learning_sessions", 0))
+                    with col2:
+                        st.metric("Discoveries", report.get("discoveries", 0))
+                    with col3:
+                        st.metric("Viral Opportunities", len(report.get("viral_opportunities", [])))
+                    
+                    # Growth Trend
+                    growth = report.get("growth_trend", {})
+                    if growth.get("status") != "insufficient_data":
+                        st.subheader("📈 Growth Trend")
+                        growth_data = growth.get("growth", {}).get("subscribers", {})
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.metric("Daily Average Growth", f"{growth_data.get('daily_average', 0):.2f}")
+                        with col2:
+                            st.metric("Growth Rate", f"{growth_data.get('growth_rate_percent', 0):.2f}%")
+                    
+                    # Viral Opportunities
+                    viral_opps = report.get("viral_opportunities", [])
+                    if viral_opps:
+                        st.subheader("🔥 Top Viral Opportunities")
+                        for i, opp in enumerate(viral_opps[:5], 1):
+                            with st.expander(f"#{i} - {opp.get('type', 'Unknown').replace('_', ' ').title()} - {opp.get('viral_potential', 0):.1%}"):
+                                st.write(f"**Source:** {opp.get('source', 'N/A')}")
+                                st.write(f"**Opportunity:** {opp.get('opportunity', 'N/A')}")
+                    
+                    # A/B Test Recommendations
+                    ab_tests = report.get("ab_test_recommendations", [])
+                    if ab_tests:
+                        st.subheader("🧪 A/B Test Recommendations")
+                        for test in ab_tests:
+                            priority_color = "🔴" if test.get("priority") == "high" else "🟡"
+                            st.write(f"{priority_color} **{test.get('type', 'Unknown').replace('_', ' ').title()}:** {test.get('test', 'N/A')}")
+                            st.caption(test.get("reason", ""))
+                    
+                    # Key Insights
+                    insights = report.get("key_insights", [])
+                    if insights:
+                        st.subheader("💡 Key Insights")
+                        for insight in insights:
+                            st.info(insight)
+                    
+                    # Recommendations
+                    recommendations = report.get("recommendations", [])
+                    if recommendations:
+                        st.subheader("📋 Recommendations")
+                        for rec in recommendations:
+                            st.success(rec)
+                            
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    
+    with tab3:
+        st.subheader("Generate Weekly Learning Report")
+        
+        if st.button("📅 Generate Weekly Report", use_container_width=True):
+            with st.spinner("Generating weekly report..."):
+                try:
+                    report = st.session_state.continuous_learner.get_weekly_report(st.session_state.target_channel)
+                    
+                    st.success(f"✅ Weekly Report: {report.get('week_start')} to {report.get('week_end')}")
+                    
+                    # Summary
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Daily Reports", report.get("daily_reports_count", 0))
+                    with col2:
+                        st.metric("Learning Sessions", report.get("total_learning_sessions", 0))
+                    with col3:
+                        st.metric("Discoveries", report.get("total_discoveries", 0))
+                    with col4:
+                        st.metric("Top Opportunities", len(report.get("top_discoveries", [])))
+                    
+                    # Growth Summary
+                    growth = report.get("growth_summary", {})
+                    if growth.get("status") != "insufficient_data":
+                        st.subheader("📈 Weekly Growth Summary")
+                        growth_data = growth.get("growth", {}).get("subscribers", {})
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.metric("Weekly Growth", f"{growth_data.get('change', 0):,}")
+                        with col2:
+                            st.metric("Daily Average", f"{growth_data.get('daily_average', 0):.2f}")
+                        
+                        projection = growth.get("projection", {})
+                        if projection.get("days_to_1m"):
+                            st.info(f"🎯 Projected time to 1M subscribers: {projection['days_to_1m']:,.0f} days")
+                    
+                    # Top Discoveries
+                    top_discoveries = report.get("top_discoveries", [])
+                    if top_discoveries:
+                        st.subheader("🔥 Top Discoveries This Week")
+                        for i, disc in enumerate(top_discoveries[:5], 1):
+                            with st.expander(f"#{i} - {disc.get('opportunity', 'N/A')[:50]}..."):
+                                st.write(f"**Viral Potential:** {disc.get('viral_potential', 0):.1%}")
+                                st.write(f"**Source:** {disc.get('source', 'N/A')}")
+                    
+                    # Weekly Insights
+                    insights = report.get("weekly_insights", [])
+                    if insights:
+                        st.subheader("💡 Weekly Insights")
+                        for insight in insights:
+                            st.success(insight)
+                    
+                    # Next Week Recommendations
+                    recommendations = report.get("next_week_recommendations", [])
+                    if recommendations:
+                        st.subheader("📋 Recommendations for Next Week")
+                        for rec in recommendations:
+                            st.info(rec)
+                            
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    
+    with tab4:
+        st.subheader("Learning History")
+        
+        days = st.slider("Days to look back", 1, 30, 7)
+        
+        if st.button("📜 View Learning History", use_container_width=True):
+            with st.spinner("Loading learning history..."):
+                try:
+                    history = st.session_state.continuous_learner.get_learning_history(days=days)
+                    
+                    st.subheader("History Summary")
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Sessions", history.get("sessions_count", 0))
+                    with col2:
+                        st.metric("Discoveries", history.get("discoveries_count", 0))
+                    with col3:
+                        st.metric("Period", f"{days} days")
+                    
+                    # Discovery Types
+                    discovery_types = history.get("discovery_types", {})
+                    if discovery_types:
+                        st.subheader("Discovery Types")
+                        for disc_type, count in discovery_types.items():
+                            st.write(f"**{disc_type.replace('_', ' ').title()}:** {count}")
+                    
+                    # Recent Sessions
+                    sessions = history.get("sessions", [])
+                    if sessions:
+                        st.subheader("Recent Learning Sessions")
+                        for i, session in enumerate(sessions[:10], 1):
+                            with st.expander(f"Session #{i} - {datetime.fromisoformat(session['timestamp']).strftime('%Y-%m-%d %H:%M')}"):
+                                st.write(f"**Discoveries:** {len(session.get('discoveries', []))}")
+                                st.write(f"**Updates:** {len(session.get('updates', []))}")
+                                
+                                if session.get("discoveries"):
+                                    st.write("**Discoveries:**")
+                                    for disc in session.get("discoveries", [])[:3]:
+                                        st.write(f"• {disc.get('type', 'Unknown')}")
+                                
+                                if session.get("updates"):
+                                    st.write("**Updates:**")
+                                    for update in session.get("updates", [])[:5]:
+                                        st.write(f"• {update}")
+                    else:
+                        st.info("No learning sessions found for this period.")
+                        
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+elif is_page("code_self_improvement"):
+    st.title(t("pages.code_self_improvement.title"))
+    st.markdown("Optimize algorithms and improve code based on performance metrics")
+    
+    # Channel and Niche Inputs
+    render_channel_niche_inputs()
+    
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "Optimize Algorithms",
+        "Code Suggestions",
+        "Measure Improvement",
+        "Set Baseline",
+        "Optimization History"
+    ])
+    
+    with tab1:
+        st.subheader("Optimize Algorithm Parameters")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("🎯 Optimize Viral Predictor Weights", use_container_width=True):
+                with st.spinner("Optimizing viral predictor weights..."):
+                    try:
+                        result = st.session_state.code_self_improver.optimize_viral_predictor_weights()
+                        
+                        if result.get("status") == "optimized":
+                            st.success("✅ Weights optimized!")
+                            
+                            st.subheader("Weight Changes")
+                            changes = result.get("changes", {})
+                            for indicator, change_data in changes.items():
+                                with st.expander(f"📊 {indicator.replace('_', ' ').title()}"):
+                                    col1, col2, col3 = st.columns(3)
+                                    with col1:
+                                        st.metric("Before", f"{change_data.get('before', 0):.3f}")
+                                    with col2:
+                                        st.metric("After", f"{change_data.get('after', 0):.3f}")
+                                    with col3:
+                                        change_pct = change_data.get("change_percent", 0)
+                                        st.metric("Change", f"{change_pct:+.1f}%")
+                            
+                            st.metric("Improvement Score", f"{result.get('improvement_score', 0):.3f}")
+                            
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+        
+        with col2:
+            if st.button("⚙️ Optimize All Parameters", use_container_width=True):
+                with st.spinner("Optimizing all algorithm parameters..."):
+                    try:
+                        result = st.session_state.code_self_improver.optimize_algorithm_parameters()
+                        
+                        if result.get("status") == "optimized":
+                            st.success("✅ Parameters optimized!")
+                            
+                            optimizations = result.get("optimizations", {})
+                            for opt_type, opt_data in optimizations.items():
+                                if "error" not in opt_data:
+                                    with st.expander(f"📈 {opt_type.replace('_', ' ').title()}"):
+                                        st.json(opt_data)
+                            
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+        
+        if st.button("✅ Apply Optimizations", use_container_width=True):
+            with st.spinner("Applying optimizations..."):
+                try:
+                    result = st.session_state.code_self_improver.apply_optimizations()
+                    
+                    st.success(f"✅ Applied {result.get('applied_count', 0)} optimization(s)!")
+                    
+                    applied = result.get("applied", [])
+                    if applied:
+                        st.subheader("Applied Optimizations")
+                        for app in applied:
+                            st.success(f"✅ {app.get('module', 'Unknown')} - {app.get('optimization', 'N/A')}")
+                    
+                    errors = result.get("errors", [])
+                    if errors:
+                        st.subheader("Errors")
+                        for err in errors:
+                            st.error(f"❌ {err.get('module', 'Unknown')}: {err.get('error', 'N/A')}")
+                            
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    
+    with tab2:
+        st.subheader("Code Update Suggestions")
+        st.markdown("Get suggestions for code improvements based on learned patterns")
+        
+        if st.button("💡 Get Code Suggestions", use_container_width=True):
+            with st.spinner("Analyzing patterns for code suggestions..."):
+                try:
+                    suggestions = st.session_state.code_self_improver.suggest_code_updates()
+                    
+                    st.metric("Suggestions Found", suggestions.get("suggestions_count", 0))
+                    
+                    sugg_list = suggestions.get("suggestions", [])
+                    if sugg_list:
+                        # Group by priority
+                        high_priority = [s for s in sugg_list if s.get("priority") == "high"]
+                        medium_priority = [s for s in sugg_list if s.get("priority") == "medium"]
+                        low_priority = [s for s in sugg_list if s.get("priority") == "low"]
+                        
+                        if high_priority:
+                            st.subheader("🔴 High Priority")
+                            for sugg in high_priority:
+                                with st.expander(f"📝 {sugg.get('module', 'Unknown')} - {sugg.get('type', 'Unknown').replace('_', ' ').title()}"):
+                                    st.write(f"**Suggestion:** {sugg.get('suggestion', 'N/A')}")
+                                    st.write(f"**Reason:** {sugg.get('reason', 'N/A')}")
+                                    if sugg.get("current"):
+                                        st.write(f"**Current:** {sugg.get('current', 'N/A')}")
+                                    if sugg.get("recommended"):
+                                        st.write(f"**Recommended:** {sugg.get('recommended', 'N/A')}")
+                        
+                        if medium_priority:
+                            st.subheader("🟡 Medium Priority")
+                            for sugg in medium_priority:
+                                with st.expander(f"📝 {sugg.get('module', 'Unknown')} - {sugg.get('type', 'Unknown').replace('_', ' ').title()}"):
+                                    st.write(f"**Suggestion:** {sugg.get('suggestion', 'N/A')}")
+                                    st.write(f"**Reason:** {sugg.get('reason', 'N/A')}")
+                        
+                        if low_priority:
+                            st.subheader("🟢 Low Priority")
+                            for sugg in low_priority:
+                                with st.expander(f"📝 {sugg.get('module', 'Unknown')} - {sugg.get('type', 'Unknown').replace('_', ' ').title()}"):
+                                    st.write(f"**Suggestion:** {sugg.get('suggestion', 'N/A')}")
+                                    st.write(f"**Reason:** {sugg.get('reason', 'N/A')}")
+                    else:
+                        st.info("No code suggestions at this time. Continue learning to generate suggestions.")
+                        
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    
+    with tab3:
+        st.subheader("Measure Improvement")
+        st.markdown("Compare current performance with baseline")
+        
+        days = st.slider("Analysis Period (days)", 1, 30, 7)
+        
+        if st.button("📊 Measure Improvement", use_container_width=True):
+            with st.spinner("Measuring improvement..."):
+                try:
+                    improvement = st.session_state.code_self_improver.measure_improvement(days=days)
+                    
+                    baseline = improvement.get("baseline", {})
+                    current = improvement.get("current", {})
+                    improvements = improvement.get("improvements", {})
+                    
+                    if baseline:
+                        st.subheader("Baseline vs Current")
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            if baseline.get("daily_growth"):
+                                st.metric("Baseline Daily Growth", f"{baseline['daily_growth']:.2f}")
+                        with col2:
+                            if current.get("daily_growth"):
+                                st.metric("Current Daily Growth", f"{current['daily_growth']:.2f}")
+                        with col3:
+                            if improvements.get("daily_growth"):
+                                imp = improvements["daily_growth"]
+                                st.metric("Improvement", f"{imp.get('improvement_percent', 0):+.1f}%")
+                        
+                        if baseline.get("success_rate") is not None:
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("Baseline Success Rate", f"{baseline['success_rate']:.1f}%")
+                            with col2:
+                                if current.get("success_rate") is not None:
+                                    st.metric("Current Success Rate", f"{current['success_rate']:.1f}%")
+                            with col3:
+                                if improvements.get("success_rate"):
+                                    imp = improvements["success_rate"]
+                                    st.metric("Improvement", f"{imp.get('improvement_percent', 0):+.1f}%")
+                        
+                        # Overall improvement
+                        overall = improvement.get("overall_improvement", 0)
+                        if overall != 0:
+                            st.subheader("Overall Improvement")
+                            st.metric("Overall Score", f"{overall:+.1f}%")
+                            if overall > 0:
+                                st.success("🎉 System is improving!")
+                            elif overall < 0:
+                                st.warning("⚠️ Performance has decreased. Review optimizations.")
+                    else:
+                        st.warning("⚠️ No baseline set. Set a baseline first to measure improvements.")
+                        st.info("Go to 'Set Baseline' tab to establish a performance baseline.")
+                        
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    
+    with tab4:
+        st.subheader("Set Performance Baseline")
+        st.markdown("Set current performance as baseline for future comparisons")
+        
+        if st.button("📌 Set Baseline", use_container_width=True):
+            with st.spinner("Setting performance baseline..."):
+                try:
+                    result = st.session_state.code_self_improver.set_performance_baseline()
+                    
+                    if result.get("status") == "baseline_set":
+                        st.success("✅ Baseline set successfully!")
+                        
+                        baseline = result.get("baseline", {})
+                        st.subheader("Baseline Metrics")
+                        col1, col2, col3, col4 = st.columns(4)
+                        with col1:
+                            st.metric("Daily Growth", f"{baseline.get('daily_growth', 0):.2f}")
+                        with col2:
+                            st.metric("Conversion Rate", f"{baseline.get('conversion_rate', 0):.2f}%")
+                        with col3:
+                            st.metric("Success Rate", f"{baseline.get('success_rate', 0):.1f}%")
+                        with col4:
+                            st.metric("Subscribers", f"{baseline.get('subscribers', 0):,}")
+                        
+                        st.info(f"📅 Baseline set on: {datetime.fromisoformat(baseline.get('timestamp', '')).strftime('%Y-%m-%d %H:%M')}")
+                    else:
+                        st.error(result.get("error", "Failed to set baseline"))
+                        
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    
+    with tab5:
+        st.subheader("Optimization History")
+        st.markdown("View history of all optimizations")
+        
+        if st.button("📜 View History", use_container_width=True):
+            with st.spinner("Loading optimization history..."):
+                try:
+                    history = st.session_state.code_self_improver.get_optimization_history()
+                    
+                    st.metric("Total Improvements", history.get("total_improvements", 0))
+                    
+                    # Recent improvements
+                    recent = history.get("recent_improvements", [])
+                    if recent:
+                        st.subheader("Recent Optimizations")
+                        for i, imp in enumerate(recent[-10:], 1):
+                            with st.expander(f"#{i} - {imp.get('module', 'Unknown')} - {datetime.fromisoformat(imp.get('timestamp', '')).strftime('%Y-%m-%d %H:%M')}"):
+                                st.write(f"**Type:** {imp.get('optimization_type', 'N/A').replace('_', ' ').title()}")
+                                st.write(f"**Improvement Score:** {imp.get('improvement_score', 0):.3f}")
+                                st.write(f"**Reason:** {imp.get('reason', 'N/A')}")
+                                
+                                if imp.get("before") and imp.get("after"):
+                                    st.write("**Before:**")
+                                    st.json(imp["before"])
+                                    st.write("**After:**")
+                                    st.json(imp["after"])
+                    
+                    # Current config
+                    config = history.get("current_config", {})
+                    if config:
+                        st.subheader("Current Optimized Configuration")
+                        with st.expander("View Config"):
+                            st.json(config)
+                    
+                    # Baseline
+                    baseline = history.get("performance_baseline", {})
+                    if baseline:
+                        st.subheader("Performance Baseline")
+                        st.json(baseline)
+                    else:
+                        st.info("No baseline set yet. Set a baseline to track improvements.")
+                        
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+elif is_page("safety_ethics"):
+    st.title(t("pages.safety_ethics.title"))
+    st.markdown("Ensure content compliance with YouTube Community Guidelines and ethical standards")
+    
+    # Channel and Niche Inputs
+    render_channel_niche_inputs()
+    
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "Content Safety Check",
+        "Filter Recommendations",
+        "Ethical Guidelines",
+        "Safety Statistics",
+        "Recent Violations"
+    ])
+    
+    with tab1:
+        st.subheader("Check Content Safety")
+        st.markdown("Analyze content for safety, ethics, and YouTube Community Guidelines compliance")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            title = st.text_input("Title", placeholder="Enter video title")
+            description = st.text_area("Description", placeholder="Enter video description", height=150)
+        
+        with col2:
+            tags_input = st.text_input("Tags (comma-separated)", placeholder="tag1, tag2, tag3")
+            content_type = st.selectbox("Content Type", ["video", "thumbnail", "recommendation"])
+        
+        if st.button("🔍 Check Safety", use_container_width=True):
+            if title:
+                with st.spinner("Checking content safety..."):
+                    try:
+                        tags = [tag.strip() for tag in tags_input.split(",")] if tags_input else []
+                        result = st.session_state.safety_ethics_layer.check_content_safety(
+                            title=title,
+                            description=description,
+                            tags=tags,
+                            content_type=content_type
+                        )
+                        
+                        # Display results
+                        st.subheader("Safety Check Results")
+                        
+                        col1, col2, col3, col4 = st.columns(4)
+                        with col1:
+                            risk_score = result.get("risk_score", 0)
+                            if risk_score < 0.3:
+                                st.metric("Risk Score", f"{risk_score:.2f}", delta="Safe", delta_color="normal")
+                            elif risk_score < 0.5:
+                                st.metric("Risk Score", f"{risk_score:.2f}", delta="Low Risk", delta_color="off")
+                            elif risk_score < 0.7:
+                                st.metric("Risk Score", f"{risk_score:.2f}", delta="Medium Risk", delta_color="inverse")
+                            else:
+                                st.metric("Risk Score", f"{risk_score:.2f}", delta="High Risk", delta_color="inverse")
+                        
+                        with col2:
+                            clickbait_score = result.get("clickbait_score", 0)
+                            st.metric("Clickbait Score", f"{clickbait_score:.2f}")
+                        
+                        with col3:
+                            spam_score = result.get("spam_score", 0)
+                            st.metric("Spam Score", f"{spam_score:.2f}")
+                        
+                        with col4:
+                            safety_status = result.get("safety_status", "unknown")
+                            status_emoji = {
+                                "safe": "✅",
+                                "low_risk": "⚠️",
+                                "medium_risk": "🔶",
+                                "high_risk": "🔴"
+                            }
+                            st.metric("Status", f"{status_emoji.get(safety_status, '❓')} {safety_status.replace('_', ' ').title()}")
+                        
+                        # Violations
+                        violations = result.get("violations", {})
+                        if violations:
+                            st.error("🚨 Violations Detected")
+                            for violation_type, keywords in violations.items():
+                                with st.expander(f"⚠️ {violation_type.replace('_', ' ').title()}"):
+                                    st.write("**Keywords found:**", ", ".join(keywords))
+                        else:
+                            st.success("✅ No violations detected")
+                        
+                        # Recommendation
+                        recommendation = result.get("recommendation", "")
+                        if recommendation:
+                            st.info(f"💡 {recommendation}")
+                        
+                        # Suggestions
+                        suggestions = result.get("suggestions", [])
+                        if suggestions:
+                            st.subheader("Safety Suggestions")
+                            for suggestion in suggestions:
+                                st.write(f"• {suggestion}")
+                        
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+            else:
+                st.warning("Please enter a title to check")
+    
+    with tab2:
+        st.subheader("Filter Recommendations")
+        st.markdown("Filter a list of recommendations for safety and ethics compliance")
+        
+        recommendations_input = st.text_area(
+            "Recommendations (one per line)",
+            placeholder="Enter recommendations, one per line",
+            height=200
+        )
+        
+        if st.button("🔍 Filter Recommendations", use_container_width=True):
+            if recommendations_input:
+                with st.spinner("Filtering recommendations..."):
+                    try:
+                        recommendations = [r.strip() for r in recommendations_input.split("\n") if r.strip()]
+                        result = st.session_state.safety_ethics_layer.filter_recommendations(recommendations)
+                        
+                        st.subheader("Filtering Results")
+                        
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Total Checked", result.get("total_checked", 0))
+                        with col2:
+                            st.metric("Safe", result.get("safe_count", 0), delta_color="normal")
+                        with col3:
+                            st.metric("Filtered Out", result.get("filtered_count", 0), delta_color="inverse")
+                        
+                        # Safe recommendations
+                        safe_recs = result.get("safe_recommendations", [])
+                        if safe_recs:
+                            st.subheader("✅ Safe Recommendations")
+                            for rec in safe_recs:
+                                with st.expander(f"✅ {rec.get('recommendation', '')[:60]}..."):
+                                    st.write(f"**Risk Score:** {rec.get('risk_score', 0):.2f}")
+                                    st.write(f"**Status:** {rec.get('safety_status', 'unknown')}")
+                        
+                        # Filtered out
+                        filtered = result.get("filtered_out", [])
+                        if filtered:
+                            st.subheader("🚫 Filtered Out")
+                            for rec in filtered:
+                                with st.expander(f"🚫 {rec.get('recommendation', '')[:60]}..."):
+                                    st.write(f"**Risk Score:** {rec.get('risk_score', 0):.2f}")
+                                    st.write(f"**Status:** {rec.get('safety_status', 'unknown')}")
+                                    if rec.get("reasons"):
+                                        st.write("**Reasons:**")
+                                        st.json(rec.get("reasons"))
+                        
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+            else:
+                st.warning("Please enter recommendations to filter")
+    
+    with tab3:
+        st.subheader("Ethical Guidelines")
+        st.markdown("Guidelines for creating ethical and compliant content")
+        
+        try:
+            guidelines = st.session_state.safety_ethics_layer.get_ethical_guidelines()
+            
+            st.markdown("### Core Principles")
+            for principle, description in guidelines.get("guidelines", {}).items():
+                with st.expander(f"📋 {principle.replace('_', ' ').title()}"):
+                    st.write(description)
+            
+            st.markdown("### Best Practices")
+            best_practices = guidelines.get("best_practices", [])
+            for practice in best_practices:
+                st.write(f"✅ {practice}")
+            
+            st.markdown("### Things to Avoid")
+            avoid = guidelines.get("avoid", [])
+            for item in avoid:
+                st.write(f"❌ {item}")
+                
+        except Exception as e:
+            st.error(f"Error: {e}")
+    
+    with tab4:
+        st.subheader("Safety Statistics")
+        st.markdown("Overall safety and compliance statistics")
+        
+        try:
+            stats = st.session_state.safety_ethics_layer.get_safety_statistics()
+            
+            if stats.get("total_checks", 0) > 0:
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    st.metric("Total Checks", stats.get("total_checks", 0))
+                
+                with col2:
+                    violation_rate = stats.get("violation_rate", 0)
+                    st.metric("Violation Rate", f"{violation_rate:.1%}")
+                
+                with col3:
+                    clickbait_rate = stats.get("clickbait_rate", 0)
+                    st.metric("Clickbait Rate", f"{clickbait_rate:.1%}")
+                
+                with col4:
+                    safety_rate = stats.get("safety_rate", 0)
+                    st.metric("Safety Rate", f"{safety_rate:.1%}", delta_color="normal")
+                
+                st.markdown("---")
+                
+                st.subheader("Detailed Statistics")
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    st.metric("Violations Found", stats.get("violations_found", 0))
+                with col2:
+                    st.metric("Clickbait Detected", stats.get("clickbait_detected", 0))
+                with col3:
+                    st.metric("Spam Detected", stats.get("spam_detected", 0))
+                with col4:
+                    st.metric("Safe Content", stats.get("safe_content_count", 0))
+            else:
+                st.info("No safety checks performed yet. Use the Content Safety Check tab to start.")
+                
+        except Exception as e:
+            st.error(f"Error: {e}")
+    
+    with tab5:
+        st.subheader("Recent Violations")
+        st.markdown("Recently detected violations and filtered content")
+        
+        try:
+            limit = st.number_input("Number of violations to show", min_value=1, max_value=50, value=10)
+            
+            if st.button("🔄 Refresh", use_container_width=True):
+                violations = st.session_state.safety_ethics_layer.get_recent_violations(limit=limit)
+                
+                if violations:
+                    for i, violation in enumerate(reversed(violations), 1):
+                        with st.expander(f"🚨 Violation #{i} - {violation.get('timestamp', 'Unknown')[:10]}"):
+                            violations_data = violation.get("violations", {})
+                            for violation_type, keywords in violations_data.items():
+                                st.write(f"**{violation_type.replace('_', ' ').title()}:**")
+                                st.write(", ".join(keywords))
+                            
+                            content = violation.get("content", {})
+                            if content:
+                                st.write("**Content:**")
+                                st.write(f"Title: {content.get('title', 'N/A')}")
+                                if content.get("description"):
+                                    st.write(f"Description: {content.get('description', '')[:200]}...")
+                else:
+                    st.success("✅ No violations detected recently!")
+        except Exception as e:
+            st.error(f"Error: {e}")
+
+# Footer
+st.markdown("---")
+st.markdown("**YouTube SEO AGI Tool** - Universal Self-Evolving Open-Source AGI Assistant")
+

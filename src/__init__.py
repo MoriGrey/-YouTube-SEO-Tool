@@ -1,0 +1,3 @@
+# YouTube SEO AGI Tool
+__version__ = "0.1.0"
+

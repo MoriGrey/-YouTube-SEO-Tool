@@ -1,0 +1,269 @@
+{
+  "common": {
+    "subscribers": "Aboneler",
+    "total_views": "Toplam İzlenme",
+    "videos": "Videolar",
+    "avg_views_per_video": "Video Başına Ortalama İzlenme",
+    "channel": "Kanal",
+    "niche": "Niş",
+    "target_channel": "Hedef Kanal",
+    "score": "Puan",
+    "count": "Adet",
+    "total": "Toplam",
+    "average": "Ortalama",
+    "recommendations": "Öneriler",
+    "suggestions": "Öneriler",
+    "alerts": "Uyarılar",
+    "analysis": "Analiz",
+    "status": "Durum",
+    "error": "Hata",
+    "success": "Başarılı",
+    "warning": "Uyarı",
+    "info": "Bilgi",
+    "loading": "Yükleniyor...",
+    "search": "Ara",
+    "filter": "Filtrele",
+    "reset": "Sıfırla",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "view": "Görüntüle",
+    "close": "Kapat",
+    "next": "Sonraki",
+    "previous": "Önceki",
+    "submit": "Gönder",
+    "update": "Güncelle",
+    "refresh": "Yenile"
+  },
+  "pages": {
+    "dashboard": {
+      "title": "Kontrol Paneli",
+      "description": "YouTube SEO AGI Aracı'na hoş geldiniz - Kanal optimizasyon asistanınız!",
+      "quick_stats": "Hızlı İstatistikler",
+      "proactive_suggestions": "Proaktif Öneriler"
+    },
+    "channel_analysis": {
+      "title": "Kanal Analizi",
+      "description": "Kanalınızın performansını analiz edin",
+      "analyze_button": "Kanalı Analiz Et",
+      "statistics": "Kanal İstatistikleri",
+      "video_performance": "Video Performansı",
+      "average_views": "Ortalama İzlenme",
+      "average_likes": "Ortalama Beğeni",
+      "average_comments": "Ortalama Yorum"
+    },
+    "keyword_research": {
+      "title": "Anahtar Kelime Araştırması",
+      "description": "Trend anahtar kelimeleri keşfedin",
+      "enter_keywords": "Temel anahtar kelimeleri girin (her satıra bir tane)",
+      "research_button": "Anahtar Kelimeleri Araştır",
+      "found_keywords": "{count} Anahtar Kelime Bulundu",
+      "top_keywords": "En İyi Sıralanan Anahtar Kelimeler",
+      "rank": "Sıra"
+    },
+    "competitor_analysis": {
+      "title": "Rakip Analizi",
+      "description": "Rakip kanalları analiz edin",
+      "enter_keywords": "Rakip bulmak için niş anahtar kelimeleri girin",
+      "find_button": "Rakipleri Bul",
+      "found_competitors": "{count} Rakip Bulundu"
+    },
+    "title_optimizer": {
+      "title": "Başlık Optimizasyonu",
+      "description": "SEO için başlık varyasyonları oluşturun",
+      "enter_title": "Video başlığını girin",
+      "song_name": "Şarkı adı (opsiyonel)",
+      "generate_button": "Başlık Varyasyonları Oluştur",
+      "variations": "Başlık Varyasyonları (SEO Puanına Göre Sıralı)",
+      "length": "Uzunluk",
+      "keywords_found": "Bulunan Anahtar Kelimeler",
+      "structure": "Yapı"
+    },
+    "description_generator": {
+      "title": "Açıklama Üretici",
+      "description": "SEO optimize açıklamalar oluşturun",
+      "video_title": "Video Başlığı",
+      "song_name": "Şarkı Adı",
+      "custom_info": "Özel Bilgi (opsiyonel)",
+      "generate_button": "Açıklama Oluştur",
+      "generated_description": "Oluşturulan Açıklama",
+      "word_count": "Kelime Sayısı",
+      "character_count": "Karakter Sayısı",
+      "hashtags": "Hashtag'ler",
+      "seo_score": "SEO Puanı"
+    },
+    "tag_suggester": {
+      "title": "Etiket Önerici",
+      "description": "Video için etiket önerileri alın",
+      "video_title": "Video Başlığı",
+      "song_name": "Şarkı Adı (opsiyonel)",
+      "suggest_button": "Etiket Öner",
+      "suggested_tags": "Önerilen Etiketler",
+      "copy_tags": "Etiketleri kopyalayın",
+      "total_tags": "Toplam Etiket",
+      "optimization_score": "Optimizasyon Puanı",
+      "best_practices": "En İyi Uygulamalar"
+    },
+    "trend_predictor": {
+      "title": "Trend Tahmincisi",
+      "description": "Gelecek trendleri tahmin edin",
+      "predict_button": "Trendleri Tahmin Et",
+      "recent_trends": "Son Trendler",
+      "trending_keywords": "Trend Anahtar Kelimeler",
+      "trending_themes": "Trend Temalar",
+      "predictions": "Tahminler",
+      "best_posting_times": "En İyi Yayınlama Zamanları",
+      "timezone": "Saat Dilimi",
+      "recommendations": "Öneriler",
+      "next_optimal_post": "Sonraki Optimal Yayın Zamanı",
+      "trend": "Trend",
+      "confidence": "Güven",
+      "action": "Aksiyon"
+    },
+    "proactive_advisor": {
+      "title": "Proaktif Danışman",
+      "description": "Akıllı öneriler ve uyarılar alın",
+      "get_suggestions_button": "Proaktif Önerileri Al",
+      "content_ideas": "İçerik Fikirleri",
+      "priority_actions": "Öncelikli Aksiyonlar",
+      "reason": "Sebep",
+      "difficulty": "Zorluk"
+    },
+    "performance_tracking": {
+      "title": "Performans Takibi ve Kendini Geliştirme",
+      "description": "Öneri performansını takip edin ve başarı/başarısızlıklardan öğrenin",
+      "take_snapshot": "Anlık Görüntü Al",
+      "analyze_growth": "Büyüme Trendini Analiz Et",
+      "learn_from_recommendations": "Önerilerden Öğren",
+      "get_summary": "Performans Özeti Al",
+      "current_metrics": "Mevcut Metrikler",
+      "growth_trend": "Büyüme Trendi",
+      "subscriber_growth": "Abone Büyümesi",
+      "daily_average_growth": "Günlük Ortalama Büyüme",
+      "growth_rate": "Büyüme Oranı",
+      "projection_to_1m": "1M Abone Projeksiyonu",
+      "days_to_1m": "1M Abone'ye Kalan Gün",
+      "insufficient_data": "Yetersiz Veri"
+    },
+    "milestone_tracker": {
+      "title": "Büyüme Milestone Takipçisi",
+      "description": "1 milyon abone hedefine doğru ilerlemenizi takip edin!",
+      "update_status_button": "Durumu Güncelle",
+      "current_status": "Mevcut Durum",
+      "current_subscribers": "Mevcut Aboneler",
+      "overall_progress": "Genel İlerleme",
+      "next_milestone": "Sonraki Milestone",
+      "progress_to_next": "Sonraki Milestone'a İlerleme",
+      "motivation": "Motivasyon",
+      "time_estimates": "Sonraki Milestone'a Zaman Tahminleri",
+      "milestone_strategy": "Milestone Stratejisi",
+      "focus": "Odak",
+      "key_actions": "Anahtar Aksiyonlar",
+      "content_tips": "İçerik İpuçları",
+      "growth_hacks": "Büyüme Hileleri",
+      "achieved_milestones": "Elde Edilen Milestone'lar"
+    },
+    "feedback_learning": {
+      "title": "Geri Bildirim Öğrenme Sistemi",
+      "description": "Kullanıcı geri bildirimlerinden ve öneri performansından öğrenin"
+    },
+    "viral_predictor": {
+      "title": "Viral İçerik Tahmincisi",
+      "description": "Yayınlamadan önce viral potansiyeli tahmin edin"
+    },
+    "competitor_benchmark": {
+      "title": "Rakip Kıyaslama",
+      "description": "1M+ aboneli kanallardan öğrenin"
+    },
+    "multi_source_data": {
+      "title": "Çok Kaynaklı Veri Entegrasyonu",
+      "description": "Google Trends, Reddit, Twitter ve daha fazlasından veri entegre edin"
+    },
+    "knowledge_graph": {
+      "title": "Bilgi Grafiği ve Çelişki Çözümü",
+      "description": "Tüm veri kaynaklarını birleştiren birleşik bilgi grafiği"
+    },
+    "continuous_learning": {
+      "title": "Sürekli Öğrenme Döngüsü (7/24)",
+      "description": "Sürekli çalışan otomatik öğrenme sistemi"
+    },
+    "code_self_improvement": {
+      "title": "Kod Kendini Geliştirme",
+      "description": "Performans metriklerine göre algoritmaları optimize edin ve kodu iyileştirin"
+    },
+    "safety_ethics": {
+      "title": "Güvenlik ve Etik Katmanı",
+      "description": "YouTube Topluluk Kuralları ve etik standartlara uygunluğu sağlayın"
+    }
+  },
+  "navigation": {
+    "dashboard": "📊 Kontrol Paneli",
+    "channel_analysis": "📈 Kanal Analizi",
+    "keyword_research": "🔍 Anahtar Kelime Araştırması",
+    "competitor_analysis": "⚔️ Rakip Analizi",
+    "title_optimizer": "✏️ Başlık Optimizasyonu",
+    "description_generator": "📝 Açıklama Üretici",
+    "tag_suggester": "🏷️ Etiket Önerici",
+    "trend_predictor": "📅 Trend Tahmincisi",
+    "proactive_advisor": "💡 Proaktif Danışman",
+    "performance_tracking": "📊 Performans Takibi",
+    "milestone_tracker": "🎯 Milestone Takipçisi",
+    "feedback_learning": "🧠 Geri Bildirim Öğrenme",
+    "viral_predictor": "🔥 Viral Tahmincisi",
+    "competitor_benchmark": "📊 Rakip Kıyaslama",
+    "multi_source_data": "🌐 Çok Kaynaklı Veri",
+    "knowledge_graph": "🧠 Bilgi Grafiği",
+    "continuous_learning": "🔄 Sürekli Öğrenme",
+    "code_self_improvement": "⚙️ Kod Kendini Geliştirme",
+    "safety_ethics": "🛡️ Güvenlik ve Etik"
+  },
+  "forms": {
+    "target_channel": "🎯 Hedef Kanal",
+    "niche": "🎨 Niş",
+    "channel_help": "YouTube kanal handle'ını girin (@ olmadan)",
+    "niche_help": "İçerik nişinizi/anahtar kelimelerinizi girin",
+    "enter_keywords": "Anahtar kelimeleri girin",
+    "enter_title": "Video başlığını girin",
+    "enter_description": "Video açıklamasını girin",
+    "enter_tags": "Etiketleri girin (virgülle ayrılmış)",
+    "optional": "opsiyonel"
+  },
+  "messages": {
+    "channel_not_found": "Kanal bulunamadı. Lütfen kanal handle'ını kontrol edin.",
+    "error_loading": "Veri yüklenirken hata: {error}",
+    "analyzing": "Analiz ediliyor...",
+    "researching": "Araştırılıyor...",
+    "generating": "Oluşturuluyor...",
+    "loading": "Yükleniyor...",
+    "no_data": "Veri yok",
+    "insufficient_data": "Yetersiz veri. Daha fazla anlık görüntü alın!",
+    "success": "Başarılı!",
+    "error": "Hata oluştu",
+    "warning": "Uyarı"
+  },
+  "cards": {
+    "subscribers": "Aboneler",
+    "total_views": "Toplam İzlenme",
+    "videos": "Videolar",
+    "avg_views_per_video": "Video Başına Ortalama İzlenme",
+    "total_channel_subscribers": "Toplam kanal aboneleri",
+    "all_time_video_views": "Tüm zamanlar video izlenmeleri",
+    "total_published_videos": "Toplam yayınlanan videolar",
+    "average_views_per_video": "Video başına ortalama izlenme",
+    "recommendation": "Öneri",
+    "alert": "Uyarı",
+    "suggestion": "Öneri",
+    "content_idea": "İçerik Fikri",
+    "priority_action": "Öncelikli Aksiyon",
+    "best_practice": "En İyi Uygulama",
+    "insight": "İçgörü"
+  },
+  "app": {
+    "title": "🎸 YouTube SEO AGI Aracı",
+    "language_selector": "Dil Seçimi",
+    "turkish": "Türkçe",
+    "english": "English"
+  }
+}
+
