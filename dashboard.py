@@ -84,6 +84,20 @@ auth_manager = get_auth_manager()
 # Initialize rate limiter
 rate_limiter = get_rate_limiter()
 
+# Restore authentication from cookie on page refresh
+# Streamlit-Authenticator stores auth in cookies, sync with session state
+if not st.session_state.get('authenticated', False):
+    # Check if authenticator has valid cookie
+    auth_status = st.session_state.get('authentication_status', False)
+    if auth_status:
+        # Restore authentication state from cookie
+        name = st.session_state.get('name')
+        username = st.session_state.get('username')
+        if name and username:
+            st.session_state['authenticated'] = True
+            st.session_state['user_name'] = name
+            logger.info(f"Restored authentication from cookie for user: {username}")
+
 # Require authentication (check at the very start)
 if not auth_manager.is_authenticated():
     # Show login form
