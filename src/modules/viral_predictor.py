@@ -63,12 +63,18 @@ class ViralPredictor:
         if os.path.exists(self.DATA_FILE):
             try:
                 with open(self.DATA_FILE, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    data = json.load(f)
+                    # Ensure viral_content_patterns is a list (fix for old data)
+                    if "viral_content_patterns" in data and isinstance(data["viral_content_patterns"], dict):
+                        data["viral_content_patterns"] = []
+                    elif "viral_content_patterns" not in data:
+                        data["viral_content_patterns"] = []
+                    return data
             except Exception:
                 pass
         return {
             "predictions": [],
-            "viral_content_patterns": {},
+            "viral_content_patterns": [],  # Fixed: should be list, not dict
             "accuracy_tracking": {}
         }
     
