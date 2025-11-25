@@ -4200,10 +4200,27 @@ elif is_page("caption_optimizer"):
                         
                         if "error" in analysis:
                             st.error(f"❌ **Error:** {analysis['error']}")
+                            
+                            # Special handling for OAuth2 requirement
+                            if analysis.get('error_type') == 'oauth2_required':
+                                st.warning("🔐 **OAuth2 Authentication Required**")
+                                st.markdown("""
+                                **Why this happens:**
+                                - YouTube Captions API requires OAuth2 authentication (not just API key)
+                                - You can only download captions for videos you own
+                                - This is a YouTube API security requirement
+                                """)
+                            
                             if "recommendation" in analysis:
-                                st.info(f"💡 **Recommendation:** {analysis['recommendation']}")
+                                st.info(f"💡 **Recommendation:**\n\n{analysis['recommendation']}")
+                            
+                            if "workaround" in analysis:
+                                st.success(f"✅ **Workaround:**\n\n{analysis['workaround']}")
+                            
                             if "download_error" in analysis:
-                                st.warning(f"⚠️ **Technical Details:** {analysis['download_error']}")
+                                with st.expander("🔧 Technical Details"):
+                                    st.code(analysis['download_error'], language=None)
+                            
                             if "available_languages" in analysis:
                                 st.info(f"📝 **Available Languages:** {', '.join(analysis['available_languages'])}")
                         else:

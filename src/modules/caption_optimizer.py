@@ -111,8 +111,32 @@ class CaptionOptimizer:
                 download_error = str(e)
                 transcript = None
                 
+                # Check if it's an OAuth2 requirement (401 error)
+                if "401" in download_error or "Login Required" in download_error or "OAuth2" in download_error or "API keys are not supported" in download_error:
+                    return {
+                        "error": "OAuth2 authentication required",
+                        "video_id": video_id,
+                        "language": track_language,
+                        "is_auto_generated": is_auto_generated,
+                        "error_type": "oauth2_required",
+                        "recommendation": (
+                            "YouTube Captions API requires OAuth2 authentication (not just API key). "
+                            "This means you can only download captions for videos you own. "
+                            "To use this feature:\n"
+                            "1. You must be the owner of the video\n"
+                            "2. OAuth2 authentication must be set up (currently not implemented)\n"
+                            "3. Alternatively, you can manually copy captions from YouTube Studio\n\n"
+                            "**Note:** This is a YouTube API limitation - caption downloads require video ownership and OAuth2."
+                        ),
+                        "workaround": (
+                            "**Workaround:**\n"
+                            "- Go to YouTube Studio → Videos → Select your video → Subtitles\n"
+                            "- Copy the transcript manually\n"
+                            "- Or use YouTube's built-in caption editor to optimize captions"
+                        )
+                    }
                 # Check if it's a permission issue
-                if "403" in download_error or "Forbidden" in download_error:
+                elif "403" in download_error or "Forbidden" in download_error:
                     return {
                         "error": "Cannot download captions - permission denied",
                         "video_id": video_id,
