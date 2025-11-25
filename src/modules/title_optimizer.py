@@ -45,8 +45,8 @@ class TitleOptimizer:
         """
         variations = []
         
-        # Use provided niche or default
-        niche = niche or "psychedelic anatolian rock"
+        # Use provided niche or empty string (no hardcoded default)
+        niche = niche or ""
         
         # Extract keywords from base title and niche
         keywords = self._extract_keywords(base_title, niche)
@@ -65,7 +65,7 @@ class TitleOptimizer:
             variation = structure_func(song_name or base_title, keywords, niche)
             
             # Analyze SEO
-            seo_analysis = self.keyword_researcher.analyze_title_seo(variation)
+            seo_analysis = self.keyword_researcher.analyze_title_seo(variation, niche=niche)
             
             variations.append({
                 "title": variation,
@@ -142,7 +142,7 @@ class TitleOptimizer:
             # Capitalize niche properly
             genre = " ".join(word.capitalize() for word in niche.split())
         else:
-            genre = "Psychedelic Anatolian Rock"  # Default fallback
+            genre = "Music"  # Generic fallback
         
         year = "70s"
         title = f"{song_name} | {genre} | {year}"
@@ -154,7 +154,7 @@ class TitleOptimizer:
             # Capitalize niche properly
             genre = " ".join(word.capitalize() for word in niche.split())
         else:
-            genre = "Psychedelic Anatolian Rock"  # Default fallback
+            genre = "Music"  # Generic fallback
         
         title = f"{song_name} [{genre}]"
         return title[:60]
@@ -165,7 +165,7 @@ class TitleOptimizer:
             # Capitalize niche properly
             genre = " ".join(word.capitalize() for word in niche.split())
         else:
-            genre = "Psychedelic Anatolian Rock"  # Default fallback
+            genre = "Music"  # Generic fallback
         
         title = f"{song_name} | {genre} Cover"
         return title[:60]
@@ -176,7 +176,7 @@ class TitleOptimizer:
             # Capitalize niche properly
             genre = " ".join(word.capitalize() for word in niche.split())
         else:
-            genre = "Psychedelic Anatolian Rock"  # Default fallback
+            genre = "Music"  # Generic fallback
         
         emotional_words = ["Amazing", "Incredible", "Beautiful", "Epic"]
         emotional = random.choice(emotional_words)
@@ -194,14 +194,15 @@ class TitleOptimizer:
         Returns:
             Optimization suggestions and improved version
         """
-        analysis = self.keyword_researcher.analyze_title_seo(title)
+        analysis = self.keyword_researcher.analyze_title_seo(title, niche=niche)
         
         # Generate optimized version
-        niche = niche or "psychedelic anatolian rock"
+        if not niche:
+            niche = ""  # Use empty string instead of hardcoded default
         keywords = self._extract_keywords(title, niche)
         optimized = self._structure_with_pipe(title, keywords, niche)
         
-        optimized_analysis = self.keyword_researcher.analyze_title_seo(optimized)
+        optimized_analysis = self.keyword_researcher.analyze_title_seo(optimized, niche=niche)
         
         return {
             "original": {
@@ -226,7 +227,7 @@ class TitleOptimizer:
             "structures": [
                 "Song Name | Genre | Year",
                 "Song Name [Genre]",
-                "Song Name | Psychedelic Anatolian Rock Cover"
+                "Song Name | Music Cover"
             ],
             "avoid": [
                 "Clickbait without substance",

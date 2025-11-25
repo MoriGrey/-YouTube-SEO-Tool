@@ -43,7 +43,7 @@ class TagSuggester:
         Returns:
             Tag suggestions with analysis
         """
-        niche = niche or "psychedelic anatolian rock"
+        niche = niche or ""  # No hardcoded default
         
         # Generate base tags from niche
         niche_words = niche.lower().split()
@@ -63,14 +63,14 @@ class TagSuggester:
             if tag not in niche.lower():
                 base_tags.append(f"{niche.lower()} {tag}")
         
-        # Fallback if no niche provided
+        # Fallback if no niche provided - use general music tags
         if not base_tags:
             base_tags = [
-                "psychedelic anatolian rock",
-                "anadolu rock",
-                "turkish rock",
-                "70s rock",
-                "psychedelic rock"
+                "music",
+                "song",
+                "cover",
+                "video",
+                "youtube"
             ]
         
         # Song-specific tags

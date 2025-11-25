@@ -906,7 +906,8 @@ if is_page("dashboard"):
     st.markdown(f"### 💡 {t('pages.dashboard.proactive_suggestions')}")
     
     try:
-        suggestions = st.session_state.proactive_advisor.get_proactive_suggestions(st.session_state.target_channel)
+        niche = st.session_state.get("target_niche", "")
+        suggestions = st.session_state.proactive_advisor.get_proactive_suggestions(st.session_state.target_channel, niche=niche)
         
         if suggestions.get("alerts"):
             alert_cols = st.columns(min(len(suggestions["alerts"]), 3))
@@ -1582,7 +1583,8 @@ elif is_page("proactive_advisor"):
     if st.button(t("pages.proactive_advisor.get_suggestions_button"), use_container_width=True):
         with st.spinner(t("messages.analyzing")):
             try:
-                suggestions = st.session_state.proactive_advisor.get_proactive_suggestions(st.session_state.target_channel)
+                niche = st.session_state.get("target_niche", "")
+                suggestions = st.session_state.proactive_advisor.get_proactive_suggestions(st.session_state.target_channel, niche=niche)
                 
                 # Alerts in card format
                 st.markdown(f"### {t('common.alerts')}")
@@ -4069,7 +4071,8 @@ elif is_page("video_seo_audit"):
         if st.button("🔍 Audit Video", use_container_width=True, type="primary"):
             with st.spinner("Analyzing video SEO..."):
                 try:
-                    audit_result = st.session_state.video_seo_audit.audit_video(video_id)
+                    niche = st.session_state.get("target_niche", "")
+                    audit_result = st.session_state.video_seo_audit.audit_video(video_id, niche=niche)
                     
                     if "error" in audit_result:
                         st.error(f"Error: {audit_result['error']}")
@@ -4196,7 +4199,8 @@ elif is_page("caption_optimizer"):
                                                        key="caption_analyze_keywords")
                         keywords = [k.strip() for k in keywords_input.split(",")] if keywords_input else None
                         
-                        analysis = st.session_state.caption_optimizer.analyze_captions(video_id, keywords)
+                        niche = st.session_state.get("target_niche", "")
+                        analysis = st.session_state.caption_optimizer.analyze_captions(video_id, keywords, niche=niche)
                         
                         if "error" in analysis:
                             st.error(f"❌ **Error:** {analysis['error']}")
@@ -4263,7 +4267,8 @@ elif is_page("caption_optimizer"):
                                                        key="optimize_keywords")
                         keywords = [k.strip() for k in keywords_input.split(",")] if keywords_input else None
                         
-                        optimization = st.session_state.caption_optimizer.optimize_captions(video_id, keywords)
+                        niche = st.session_state.get("target_niche", "")
+                        optimization = st.session_state.caption_optimizer.optimize_captions(video_id, keywords, niche=niche)
                         
                         if "error" in optimization:
                             st.error(f"Error: {optimization['error']}")

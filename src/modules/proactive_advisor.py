@@ -35,7 +35,8 @@ class ProactiveAdvisor:
     
     def get_proactive_suggestions(
         self,
-        channel_handle: str
+        channel_handle: str,
+        niche: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Get proactive suggestions without being asked.
@@ -102,7 +103,7 @@ class ProactiveAdvisor:
             })
         
         # Content suggestions
-        content_suggestions = self._generate_content_suggestions()
+        content_suggestions = self._generate_content_suggestions(niche)
         
         # Timing suggestions
         timing_suggestions = self._generate_timing_suggestions()
@@ -116,16 +117,18 @@ class ProactiveAdvisor:
             "priority_actions": self._get_priority_actions(suggestions, alerts)
         }
     
-    def _generate_content_suggestions(self) -> List[Dict[str, Any]]:
-        """Generate content ideas based on trends."""
+    def _generate_content_suggestions(self, niche: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Generate content ideas based on trends and niche."""
+        niche_title = niche.title() if niche else "Your Niche"
+        
         return [
             {
-                "idea": "Create a 'Best of Psychedelic Anatolian Rock' compilation",
+                "idea": f"Create a 'Best of {niche_title}' compilation",
                 "reason": "Compilation videos often perform well and can attract new viewers",
                 "difficulty": "Easy"
             },
             {
-                "idea": "Cover a trending Turkish folk song with psychedelic twist",
+                "idea": f"Cover a trending song in {niche_title.lower()} style",
                 "reason": "Trending songs get more search traffic",
                 "difficulty": "Medium"
             },
@@ -135,7 +138,7 @@ class ProactiveAdvisor:
                 "difficulty": "Hard"
             },
             {
-                "idea": "Make a 'Top 10 Psychedelic Anatolian Rock Songs' list",
+                "idea": f"Make a 'Top 10 {niche_title} Songs' list",
                 "reason": "List videos are highly shareable and searchable",
                 "difficulty": "Easy"
             }

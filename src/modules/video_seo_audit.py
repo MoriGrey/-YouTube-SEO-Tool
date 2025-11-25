@@ -46,7 +46,8 @@ class VideoSEOAudit:
     def audit_video(
         self,
         video_id: str,
-        channel_handle: Optional[str] = None
+        channel_handle: Optional[str] = None,
+        niche: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Perform comprehensive SEO audit for a video.
@@ -83,9 +84,9 @@ class VideoSEOAudit:
         thumbnail_url = snippet.get("thumbnails", {}).get("high", {}).get("url", "")
         
         # Analyze each element
-        title_audit = self._audit_title(title)
+        title_audit = self._audit_title(title, niche)
         description_audit = self._audit_description(description)
-        tags_audit = self._audit_tags(tags, title)
+        tags_audit = self._audit_tags(tags, title, niche)
         thumbnail_audit = self._audit_thumbnail(thumbnail_url, title)
         
         # Calculate overall SEO score
@@ -135,7 +136,7 @@ class VideoSEOAudit:
             )
         }
     
-    def _audit_title(self, title: str) -> Dict[str, Any]:
+    def _audit_title(self, title: str, niche: Optional[str] = None) -> Dict[str, Any]:
         """Audit video title for SEO."""
         if not title:
             return {
@@ -147,7 +148,7 @@ class VideoSEOAudit:
         
         # Analyze title SEO
         try:
-            seo_analysis = self.keyword_researcher.analyze_title_seo(title)
+            seo_analysis = self.keyword_researcher.analyze_title_seo(title, niche=niche)
         except Exception:
             seo_analysis = {
                 "seo_score": 0,
@@ -191,13 +192,22 @@ class VideoSEOAudit:
             recommendations.append("Add more relevant keywords to title")
         else:
             issues.append("No relevant keywords found in title")
-            recommendations.append("Include niche keywords (e.g., 'Psychedelic Anatolian Rock')")
+            if niche:
+                recommendations.append(f"Include niche keywords (e.g., '{niche.title()}')")
+            else:
+                recommendations.append("Include relevant niche keywords in title")
         
         # First 30 characters check (most important for search)
         first_30 = title[:30].lower()
-        has_keywords_in_first_30 = any(
-            kw in first_30 for kw in ["psychedelic", "anatolian", "rock", "turkish", "70s"]
-        )
+        # Generate keywords from niche if provided
+        if niche:
+            niche_keywords = niche.lower().split()
+            has_keywords_in_first_30 = any(kw in first_30 for kw in niche_keywords)
+        else:
+            # Fallback to general music keywords
+            has_keywords_in_first_30 = any(
+                kw in first_30 for kw in ["music", "song", "cover", "video"]
+            )
         if has_keywords_in_first_30:
             score += 10
         else:
@@ -342,7 +352,7 @@ class VideoSEOAudit:
             "recommendations": recommendations if recommendations else ["Description looks good!"]
         }
     
-    def _audit_tags(self, tags: List[str], title: str) -> Dict[str, Any]:
+    def _audit_tags(self, tags: List[str], title: str, niche: Optional[str] = None) -> Dict[str, Any]:
         """Audit video tags for SEO."""
         if not tags:
             return {
@@ -356,8 +366,12 @@ class VideoSEOAudit:
         total_chars = sum(len(tag) for tag in tags)
         avg_length = total_chars / tag_count if tag_count > 0 else 0
         
-        # Check keyword coverage
-        keywords = ["psychedelic", "anatolian", "rock", "turkish", "70s"]
+        # Check keyword coverage - generate from niche if provided
+        if niche:
+            keywords = niche.lower().split()
+        else:
+            # Fallback to general music keywords
+            keywords = ["music", "song", "cover", "video"]
         coverage = sum(1 for kw in keywords if any(kw in tag.lower() for tag in tags))
         
         # Calculate score

@@ -28,7 +28,8 @@ class KeywordResearcher:
     def research_keywords(
         self,
         base_keywords: List[str],
-        max_results_per_keyword: int = 10
+        max_results_per_keyword: int = 10,
+        niche: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Research keywords and related terms.
@@ -66,7 +67,7 @@ class KeywordResearcher:
         all_keywords.update(extracted_keywords)
         
         # Rank keywords by potential
-        ranked_keywords = self._rank_keywords(list(all_keywords), keyword_data)
+        ranked_keywords = self._rank_keywords(list(all_keywords), keyword_data, niche=niche)
         
         return {
             "base_keywords": base_keywords,
@@ -104,10 +105,17 @@ class KeywordResearcher:
     def _rank_keywords(
         self,
         keywords: List[str],
-        keyword_data: Dict[str, Any]
+        keyword_data: Dict[str, Any],
+        niche: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Rank keywords by SEO potential."""
         ranked = []
+        
+        # Generate base terms from niche if provided
+        if niche:
+            base_terms = niche.lower().split() + ["music", "song", "cover"]
+        else:
+            base_terms = ["music", "song", "cover", "video"]
         
         for keyword in keywords:
             # Calculate score
@@ -121,7 +129,6 @@ class KeywordResearcher:
                 score += 5
             
             # Relevance score (contains base keywords)
-            base_terms = ["psychedelic", "anatolian", "rock", "turkish", "70s", "cover"]
             relevance = sum(1 for term in base_terms if term.lower() in keyword.lower())
             score += relevance * 5
             
@@ -198,13 +205,16 @@ class KeywordResearcher:
         
         return trending_keywords
     
-    def analyze_title_seo(self, title: str) -> Dict[str, Any]:
+    def analyze_title_seo(self, title: str, niche: Optional[str] = None) -> Dict[str, Any]:
         """Analyze SEO potential of a title."""
         length = len(title)
         word_count = len(title.split())
         
-        # Check for keywords
-        keywords = ["psychedelic", "anatolian", "rock", "turkish", "70s", "cover"]
+        # Check for keywords - generate from niche if provided
+        if niche:
+            keywords = niche.lower().split() + ["music", "song", "cover"]
+        else:
+            keywords = ["music", "song", "cover", "video"]
         found_keywords = [kw for kw in keywords if kw.lower() in title.lower()]
         
         # SEO score
@@ -233,14 +243,15 @@ class KeywordResearcher:
             "word_count": word_count,
             "keywords_found": found_keywords,
             "seo_score": score,
-            "recommendation": self._get_title_recommendation(length, word_count, found_keywords)
+            "recommendation": self._get_title_recommendation(length, word_count, found_keywords, niche=niche)
         }
     
     def _get_title_recommendation(
         self,
         length: int,
         word_count: int,
-        found_keywords: List[str]
+        found_keywords: List[str],
+        niche: Optional[str] = None
     ) -> str:
         """Get recommendation for title optimization."""
         recommendations = []
@@ -256,7 +267,11 @@ class KeywordResearcher:
             recommendations.append("Consider shortening the title.")
         
         if len(found_keywords) < 2:
-            recommendations.append("Include more niche keywords (e.g., 'psychedelic', 'anatolian', 'rock').")
+            if niche:
+                niche_words = ", ".join(niche.split()[:3])
+                recommendations.append(f"Include more niche keywords (e.g., '{niche_words}').")
+            else:
+                recommendations.append("Include more relevant keywords in your title.")
         
         if not recommendations:
             return "Title looks good! It's optimized for SEO."

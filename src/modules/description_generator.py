@@ -44,8 +44,8 @@ class DescriptionGenerator:
             Generated description with metadata
         """
         keywords = keywords or []
-        niche = niche or "psychedelic anatolian rock"
-        channel_handle = channel_handle or "anatolianturkishrock"
+        niche = niche or ""  # No hardcoded default
+        channel_handle = channel_handle or ""  # No hardcoded default
         
         # Build description sections
         intro = self._generate_intro(song_name or video_title, niche)

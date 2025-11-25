@@ -204,7 +204,8 @@ class CaptionOptimizer:
     def analyze_captions(
         self,
         video_id: str,
-        keywords: Optional[List[str]] = None
+        keywords: Optional[List[str]] = None,
+        niche: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Analyze captions for SEO optimization.
@@ -230,9 +231,14 @@ class CaptionOptimizer:
                 "recommendation": "Ensure captions are available and downloadable"
             }
         
-        # Default keywords if not provided
+        # Default keywords if not provided - generate from niche
         if not keywords:
-            keywords = ["psychedelic", "anatolian", "rock", "turkish", "70s", "music"]
+            if niche:
+                # Generate keywords from niche
+                niche_words = niche.lower().split()
+                keywords = niche_words + ["music", "song", "cover"]
+            else:
+                keywords = ["music", "song", "cover", "video"]
         
         # Analyze keyword presence
         transcript_lower = transcript.lower()
@@ -402,7 +408,8 @@ class CaptionOptimizer:
         self,
         video_id: str,
         keywords: Optional[List[str]] = None,
-        target_language: str = "en"
+        target_language: str = "en",
+        niche: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Generate optimized caption suggestions.
@@ -416,7 +423,7 @@ class CaptionOptimizer:
             Optimization suggestions and improved transcript
         """
         # Analyze current captions
-        analysis = self.analyze_captions(video_id, keywords)
+        analysis = self.analyze_captions(video_id, keywords, niche=niche)
         
         if "error" in analysis:
             return analysis
@@ -430,7 +437,12 @@ class CaptionOptimizer:
         
         # Generate optimization suggestions
         if not keywords:
-            keywords = ["psychedelic", "anatolian", "rock", "turkish", "70s"]
+            if niche:
+                # Generate keywords from niche
+                niche_words = niche.lower().split()
+                keywords = niche_words + ["music", "song"]
+            else:
+                keywords = ["music", "song", "cover"]
         
         # Create optimized version (suggestions only, not actual modification)
         optimization_suggestions = []
