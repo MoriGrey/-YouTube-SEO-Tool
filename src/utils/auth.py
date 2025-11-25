@@ -265,66 +265,48 @@ class AuthenticationManager:
                 st.session_state['logout'] = False
             st.session_state['logout'] = True
     
+    def _restore_from_cookie(self):
+        """
+        Restore authentication state from cookie.
+        This is called on page refresh to sync session state with cookie.
+        """
+        try:
+            # Streamlit-Authenticator automatically reads cookie and sets these keys:
+            # - 'authentication_status': True/False
+            # - 'name': User's display name
+            # - 'username': Username
+            
+            # Check authenticator's authentication_status (set from cookie)
+            auth_status = st.session_state.get('authentication_status', False)
+            if auth_status:
+                # Get user info from authenticator's session state
+                name = st.session_state.get('name')
+                username = st.session_state.get('username')
+                
+                if name and username:
+                    # Sync our session state with authenticator's cookie-based state
+                    st.session_state['authenticated'] = True
+                    st.session_state['username'] = username
+                    st.session_state['user_name'] = name
+                    logger.info(f"Restored authentication from cookie for user: {username}")
+                    return True
+        except Exception as e:
+            logger.debug(f"Cookie restoration error (non-critical): {e}")
+        
+        return False
+    
     def is_authenticated(self) -> bool:
         """
         Check if user is authenticated.
         Checks both session state and cookie-based authentication.
         """
-        # First check session state
+        # First check our session state
         if st.session_state.get('authenticated', False):
             return True
         
-        # If not in session state, check cookie-based authentication
-        # Streamlit-Authenticator stores auth status in cookies
-        # We need to check if authenticator has valid cookie
-        try:
-            # Check if authenticator has authentication status from cookie
-            # The authenticator object has internal state that checks cookies
-            # We can access it through the authenticator's internal state
-            if hasattr(self.authenticator, 'cookie_manager'):
-                # Try to get authentication status from cookie
-                cookie_name = self.config['cookie']['name']
-                # Check if cookie exists and is valid
-                # Note: Streamlit-Authenticator handles this internally
-                # We just need to check if the session state was set by cookie
-                pass
-            
-            # Alternative: Check if authenticator's internal state indicates authentication
-            # Streamlit-Authenticator sets session state keys when cookie is valid
-            # The key pattern is usually: 'authentication_status', 'name', 'username'
-            # But we're using our own session state keys, so we need to sync
-            
-            # Check if we have username/name from cookie (authenticator sets these)
-            # If username exists but authenticated is False, restore from cookie
-            if st.session_state.get('username') and not st.session_state.get('authenticated'):
-                # Cookie might be valid but session state not synced
-                # Try to restore authentication state
-                # This happens on page refresh
-                name = st.session_state.get('name') or st.session_state.get('user_name')
-                username = st.session_state.get('username')
-                if name and username:
-                    # Restore authentication state from cookie
-                    st.session_state['authenticated'] = True
-                    st.session_state['user_name'] = name
-                    logger.info(f"Restored authentication from cookie for user: {username}")
-                    return True
-            
-            # Check authenticator's authentication_status directly
-            # Streamlit-Authenticator stores this in session state
-            auth_status = st.session_state.get('authentication_status', False)
-            if auth_status:
-                # Sync our session state with authenticator's state
-                name = st.session_state.get('name')
-                username = st.session_state.get('username')
-                if name and username:
-                    st.session_state['authenticated'] = True
-                    st.session_state['user_name'] = name
-                    return True
-                    
-        except Exception as e:
-            logger.debug(f"Cookie check error (non-critical): {e}")
-        
-        return False
+        # If not in session state, try to restore from cookie
+        # This happens on page refresh
+        return self._restore_from_cookie()
     
     def get_username(self) -> Optional[str]:
         """Get current username."""

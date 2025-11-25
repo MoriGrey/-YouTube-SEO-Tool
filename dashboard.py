@@ -84,21 +84,14 @@ auth_manager = get_auth_manager()
 # Initialize rate limiter
 rate_limiter = get_rate_limiter()
 
-# Restore authentication from cookie on page refresh
-# Streamlit-Authenticator stores auth in cookies, sync with session state
-if not st.session_state.get('authenticated', False):
-    # Check if authenticator has valid cookie
-    auth_status = st.session_state.get('authentication_status', False)
-    if auth_status:
-        # Restore authentication state from cookie
-        name = st.session_state.get('name')
-        username = st.session_state.get('username')
-        if name and username:
-            st.session_state['authenticated'] = True
-            st.session_state['user_name'] = name
-            logger.info(f"Restored authentication from cookie for user: {username}")
+# CRITICAL: Restore authentication from cookie BEFORE checking authentication
+# Streamlit-Authenticator automatically reads cookie and sets 'authentication_status', 'name', 'username'
+# We need to sync these with our session state keys BEFORE checking is_authenticated()
+# This must happen BEFORE any authenticator method calls that might reset the state
+auth_manager._restore_from_cookie()
 
 # Require authentication (check at the very start)
+# Only show login form if not authenticated
 if not auth_manager.is_authenticated():
     # Show login form
     st.title("🔐 YouTube SEO AGI Tool - Login")
@@ -117,9 +110,14 @@ if not auth_manager.is_authenticated():
     
     # Call login - this will render the login form
     # Note: login() returns None when form is displayed (waiting for input)
+    # IMPORTANT: login() also checks cookie and may restore authentication
     login_result = auth_manager.login()
     
-    if login_result is True:
+    # After login() call, check again if authenticated (cookie might have been restored)
+    if auth_manager.is_authenticated():
+        # Authentication restored from cookie or successful login
+        st.rerun()
+    elif login_result is True:
         # Login successful, rerun to show dashboard
         st.rerun()
     elif login_result is False:
