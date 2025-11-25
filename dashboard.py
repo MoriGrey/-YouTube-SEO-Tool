@@ -4181,7 +4181,6 @@ elif is_page("caption_optimizer"):
                         keywords_input = st.text_input("Target Keywords (comma-separated)", 
                                                        value="",
                                                        placeholder="Örn: techno, electronic, underground, minimal",
-                                                       key="caption_analyze_keywords",
                                                        key="caption_analyze_keywords")
                         keywords = [k.strip() for k in keywords_input.split(",")] if keywords_input else None
                         
