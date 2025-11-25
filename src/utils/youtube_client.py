@@ -81,8 +81,12 @@ class YouTubeClient:
         Returns channel ID, title, description, statistics.
         Quota cost: 1 unit
         """
-        # Remove @ if present
-        handle = handle.lstrip("@")
+        # Remove @ if present and strip whitespace
+        handle = handle.lstrip("@").strip()
+        
+        # Validate handle is not empty
+        if not handle:
+            raise ValueError("Channel handle cannot be empty. Please provide a valid channel handle.")
         
         cache_key = f"channel_handle:{handle}"
         

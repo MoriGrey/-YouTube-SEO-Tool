@@ -48,15 +48,31 @@ st.set_page_config(
 )
 
 # Initialize session state
-if "client" not in st.session_state:
+# Initialize target channel and niche
+if "target_channel" not in st.session_state:
+    st.session_state.target_channel = "anatolianturkishrock"
+if "target_niche" not in st.session_state:
+    st.session_state.target_niche = "psychedelic anatolian rock"
+if "user_api_key" not in st.session_state:
+    st.session_state.user_api_key = os.getenv("YOUTUBE_API_KEY", "")  # Fallback to env var
+if "api_key_configured" not in st.session_state:
+    st.session_state.api_key_configured = bool(st.session_state.user_api_key)
+
+# Initialize client only if API key is configured
+def initialize_client():
+    """Initialize YouTube client with user's API key."""
+    if not st.session_state.user_api_key:
+        return None
     try:
-        # Initialize target channel and niche
-        if "target_channel" not in st.session_state:
-            st.session_state.target_channel = "anatolianturkishrock"
-        if "target_niche" not in st.session_state:
-            st.session_state.target_niche = "psychedelic anatolian rock"
-        
-        st.session_state.client = create_client()
+        return create_client(api_key=st.session_state.user_api_key)
+    except Exception as e:
+        st.error(f"Error initializing client: {e}")
+        return None
+
+# Initialize client if API key is available
+if st.session_state.api_key_configured and "client" not in st.session_state:
+    try:
+        st.session_state.client = initialize_client()
         st.session_state.channel_analyzer = ChannelAnalyzer(st.session_state.client)
         st.session_state.keyword_researcher = KeywordResearcher(st.session_state.client)
         st.session_state.competitor_analyzer = CompetitorAnalyzer(st.session_state.client)
@@ -227,8 +243,43 @@ def render_channel_niche_inputs():
 with st.sidebar:
     st.title(t("app.title"))
     
-    # Language selector
+    # API Key Management (Multi-user support)
     st.markdown("---")
+    st.markdown("### 🔑 API Key")
+    
+    # Show current status
+    if st.session_state.api_key_configured:
+        st.success("✅ API Key Configured")
+        if st.button("🔄 Change API Key"):
+            st.session_state.api_key_configured = False
+            st.session_state.user_api_key = ""
+            if "client" in st.session_state:
+                del st.session_state.client
+            st.rerun()
+    else:
+        st.warning("⚠️ API Key Required")
+        api_key_input = st.text_input(
+            "YouTube API Key",
+            value="",
+            type="password",
+            help="Enter your YouTube Data API v3 key. Get one for free at: https://console.cloud.google.com/apis/credentials",
+            key="api_key_input"
+        )
+        
+        if st.button("💾 Save API Key", type="primary"):
+            if api_key_input and len(api_key_input) > 20:
+                st.session_state.user_api_key = api_key_input.strip()
+                st.session_state.api_key_configured = True
+                # Reinitialize modules with new API key
+                if "client" in st.session_state:
+                    del st.session_state.client
+                st.rerun()
+            else:
+                st.error("Please enter a valid API key (at least 20 characters)")
+    
+    st.markdown("---")
+    
+    # Language selector
     lang_options = {
         "Türkçe": "tr",
         "English": "en"
@@ -303,6 +354,23 @@ def is_page(page_key):
     }
     return page in page_translations.get(page_key, [])
 
+# Check if API key is configured before showing pages
+if not st.session_state.api_key_configured or "client" not in st.session_state or st.session_state.client is None:
+    st.warning("⚠️ **API Key Required**")
+    st.info("""
+    Please configure your YouTube API key in the sidebar to use this application.
+    
+    **How to get a free API key:**
+    1. Go to [Google Cloud Console](https://console.cloud.google.com)
+    2. Create a new project or select existing one
+    3. Enable "YouTube Data API v3"
+    4. Create credentials > API Key
+    5. Copy and paste your API key in the sidebar
+    
+    **Note:** YouTube API is completely free with 10,000 daily quota units (sufficient for most use cases).
+    """)
+    st.stop()
+
 if is_page("dashboard"):
     st.title(t("pages.dashboard.title"))
     st.markdown(t("pages.dashboard.description"))
@@ -312,48 +380,55 @@ if is_page("dashboard"):
     
     # Quick stats in card grid
     try:
-        channel_data = st.session_state.client.get_channel_by_handle(st.session_state.target_channel)
-        if channel_data.get("items"):
-            channel = channel_data["items"][0]
-            stats = channel["statistics"]
-            
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                render_card(
-                    title=t("common.subscribers"),
-                    content=t("cards.total_channel_subscribers"),
-                    metric=f"{int(stats.get('subscriberCount', 0)):,}",
-                    icon="👥",
-                    color="info"
-                )
-            with col2:
-                render_card(
-                    title=t("common.total_views"),
-                    content=t("cards.all_time_video_views"),
-                    metric=f"{int(stats.get('viewCount', 0)):,}",
-                    icon="👁️",
-                    color="info"
-                )
-            with col3:
-                render_card(
-                    title=t("common.videos"),
-                    content=t("cards.total_published_videos"),
-                    metric=f"{stats.get('videoCount', 0)}",
-                    icon="📹",
-                    color="info"
-                )
-            with col4:
-                avg_views = int(stats.get("viewCount", 0)) / max(int(stats.get("videoCount", 1)), 1)
-                render_card(
-                    title=t("common.avg_views_per_video"),
-                    content=t("cards.average_views_per_video"),
-                    metric=f"{avg_views:,.0f}",
-                    icon="📊",
-                    color="info"
-                )
+        # Validate channel handle
+        if not st.session_state.target_channel or not st.session_state.target_channel.strip():
+            st.warning(t("messages.channel_not_found") + " " + t("forms.channel_help"))
         else:
-            st.warning(t("messages.channel_not_found"))
+            channel_data = st.session_state.client.get_channel_by_handle(st.session_state.target_channel)
+            if channel_data.get("items"):
+                channel = channel_data["items"][0]
+                stats = channel["statistics"]
+                
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    render_card(
+                        title=t("common.subscribers"),
+                        content=t("cards.total_channel_subscribers"),
+                        metric=f"{int(stats.get('subscriberCount', 0)):,}",
+                        icon="👥",
+                        color="info"
+                    )
+                with col2:
+                    render_card(
+                        title=t("common.total_views"),
+                        content=t("cards.all_time_video_views"),
+                        metric=f"{int(stats.get('viewCount', 0)):,}",
+                        icon="👁️",
+                        color="info"
+                    )
+                with col3:
+                    render_card(
+                        title=t("common.videos"),
+                        content=t("cards.total_published_videos"),
+                        metric=f"{stats.get('videoCount', 0)}",
+                        icon="📹",
+                        color="info"
+                    )
+                with col4:
+                    avg_views = int(stats.get("viewCount", 0)) / max(int(stats.get("videoCount", 1)), 1)
+                    render_card(
+                        title=t("common.avg_views_per_video"),
+                        content=t("cards.average_views_per_video"),
+                        metric=f"{avg_views:,.0f}",
+                        icon="📊",
+                        color="info"
+                    )
+            else:
+                st.warning(t("messages.channel_not_found"))
+    except ValueError as e:
+        # Handle validation errors (empty channel handle)
+        st.warning(str(e))
     except Exception as e:
         st.error(t("messages.error_loading", error=str(e)))
     
