@@ -1,30 +1,73 @@
-# Environment
-.env
-venv/
-.venv/
-
 # Python
 __pycache__/
 *.py[cod]
-*.egg-info/
-dist/
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
 build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Environment variables
+.env
+.env.local
+.env.*.local
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
-# Data & Cache
-data/*.json
-data/*.csv
+# Logs
+logs/
+*.log
+
+# Cache
 .cache/
-*.db
+*.cache
 
-# Reports (keep templates)
-reports/*.pdf
-reports/*.html
+# Data files (if sensitive)
+data/*.json
+!data/.gitkeep
+
+# Reports
+reports/
+*.pdf
 
 # OS
 .DS_Store
 Thumbs.db
 
+# Encryption keys (never commit!)
+*.key
+encryption_key.txt
+
+# Test coverage
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Authentication config (contains password hashes)
+config/auth_config.yaml

@@ -28,7 +28,8 @@ class TagSuggester:
         self,
         video_title: str,
         song_name: Optional[str] = None,
-        max_tags: int = 30
+        max_tags: int = 30,
+        niche: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Suggest optimized tags for a video.
@@ -37,23 +38,40 @@ class TagSuggester:
             video_title: Video title
             song_name: Name of the song
             max_tags: Maximum number of tags to suggest
+            niche: Content niche (e.g., "oriental techno music")
         
         Returns:
             Tag suggestions with analysis
         """
-        # Base tags (always include)
-        base_tags = [
-            "psychedelic anatolian rock",
-            "anadolu rock",
-            "turkish rock",
-            "70s rock",
-            "psychedelic rock",
-            "turkish music",
-            "anatolian music",
-            "folk rock",
-            "psychedelic music",
-            "rock cover"
-        ]
+        niche = niche or "psychedelic anatolian rock"
+        
+        # Generate base tags from niche
+        niche_words = niche.lower().split()
+        base_tags = []
+        
+        # Add full niche as tag
+        base_tags.append(niche.lower())
+        
+        # Add individual niche words as tags
+        for word in niche_words:
+            if len(word) > 3:  # Skip short words
+                base_tags.append(word)
+        
+        # Add common music-related tags
+        music_tags = ["music", "song", "cover", "mix", "remix"]
+        for tag in music_tags:
+            if tag not in niche.lower():
+                base_tags.append(f"{niche.lower()} {tag}")
+        
+        # Fallback if no niche provided
+        if not base_tags:
+            base_tags = [
+                "psychedelic anatolian rock",
+                "anadolu rock",
+                "turkish rock",
+                "70s rock",
+                "psychedelic rock"
+            ]
         
         # Song-specific tags
         song_tags = []
@@ -148,8 +166,9 @@ class TagSuggester:
             score = 0
             tag_lower = tag.lower()
             
-            # Base keywords get higher score
-            if any(kw in tag_lower for kw in ["psychedelic", "anatolian", "rock", "turkish", "70s"]):
+            # Base keywords get higher score (check if tag contains niche keywords)
+            # This will be dynamic based on niche
+            if len(tag_lower.split()) >= 2:  # Multi-word tags get higher score
                 score += 10
             
             # Length score (optimal: 2-3 words)
@@ -200,14 +219,15 @@ class TagSuggester:
         total_chars = sum(len(tag) for tag in tags)
         avg_length = total_chars / len(tags) if tags else 0
         
-        # Check for keyword coverage
-        keywords = ["psychedelic", "anatolian", "rock", "turkish", "70s"]
-        coverage = sum(1 for kw in keywords if any(kw in tag.lower() for tag in tags))
+        # Check for keyword coverage (dynamic based on tags)
+        # Count how many tags contain meaningful keywords
+        meaningful_keywords = ["music", "song", "cover", "mix", "remix", "rock", "techno", "oriental", "psychedelic"]
+        coverage = sum(1 for kw in meaningful_keywords if any(kw in tag.lower() for tag in tags))
         
         return {
             "total_tags": len(tags),
             "average_length": avg_length,
-            "keyword_coverage": f"{coverage}/{len(keywords)}",
+            "keyword_coverage": f"{coverage}/{len(meaningful_keywords)}",
             "total_characters": total_chars,
             "optimization_score": self._calculate_optimization_score(tags, coverage)
         }

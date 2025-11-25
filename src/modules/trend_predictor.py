@@ -44,10 +44,10 @@ class TrendPredictor:
         recent_trends = self._analyze_recent_trends(niche)
         
         # Predict future trends
-        predictions = self._predict_future_trends(recent_trends, days_ahead)
+        predictions = self._predict_future_trends(recent_trends, days_ahead, niche)
         
         # Generate recommendations
-        recommendations = self._generate_trend_recommendations(predictions)
+        recommendations = self._generate_trend_recommendations(predictions, niche)
         
         return {
             "niche": niche,
@@ -73,18 +73,36 @@ class TrendPredictor:
         trending_words = []
         trending_themes = []
         
+        # Extract niche words for theme detection
+        niche_words = niche.lower().split()
+        
         for result in recent_results:
             title = result["snippet"]["title"].lower()
             words = [w for w in title.split() if len(w) > 4]
             trending_words.extend(words)
             
-            # Extract themes
-            if "cover" in title:
-                trending_themes.append("covers")
-            if "70s" in title or "80s" in title:
-                trending_themes.append("retro")
-            if "ai" in title or "yapay zeka" in title:
-                trending_themes.append("ai-generated")
+            # Extract themes based on niche and common patterns
+            # Check for niche-specific themes
+            for niche_word in niche_words:
+                if niche_word in title and len(niche_word) > 3:
+                    trending_themes.append(niche_word)
+            
+            # Common content patterns (dynamic based on what appears in titles)
+            common_patterns = {
+                "cover": "covers",
+                "mix": "mixes",
+                "remix": "remixes",
+                "live": "live performances",
+                "original": "original content"
+            }
+            
+            for pattern, theme in common_patterns.items():
+                if pattern in title:
+                    trending_themes.append(theme)
+            
+            # Decade/year patterns
+            if any(decade in title for decade in ["70s", "80s", "90s", "2000s", "2010s", "2020s"]):
+                trending_themes.append("retro/vintage")
         
         word_freq = Counter(trending_words)
         theme_freq = Counter(trending_themes)
@@ -98,7 +116,8 @@ class TrendPredictor:
     def _predict_future_trends(
         self,
         recent_trends: Dict[str, Any],
-        days_ahead: int
+        days_ahead: int,
+        niche: str = ""
     ) -> List[Dict[str, Any]]:
         """Predict future trends based on recent patterns."""
         predictions = []
@@ -113,7 +132,7 @@ class TrendPredictor:
                 "keyword": keyword_data["word"],
                 "trend_direction": "Rising",
                 "confidence": "Medium",
-                "recommended_action": f"Consider creating content around '{keyword_data['word']}'"
+                "recommended_action": f"Consider creating {niche} content around '{keyword_data['word']}'"
             })
         
         # Predict theme trends
@@ -122,14 +141,15 @@ class TrendPredictor:
                 "theme": theme_data["theme"],
                 "trend_direction": "Stable",
                 "confidence": "High",
-                "recommended_action": f"Continue focusing on {theme_data['theme']} content"
+                "recommended_action": f"Continue focusing on {theme_data['theme']} {niche} content"
             })
         
         return predictions
     
     def _generate_trend_recommendations(
         self,
-        predictions: List[Dict[str, Any]]
+        predictions: List[Dict[str, Any]],
+        niche: str = ""
     ) -> List[str]:
         """Generate actionable recommendations from predictions."""
         recommendations = []
@@ -141,10 +161,20 @@ class TrendPredictor:
                     f"Focus on '{top_keyword}' - it's trending upward in your niche"
                 )
         
+        # Extract themes from predictions
+        themes = []
+        for pred in predictions[:3]:
+            theme = pred.get("theme", "")
+            if theme:
+                themes.append(theme)
+        
+        # Generate niche-specific recommendations
+        niche_title = " ".join(word.capitalize() for word in niche.split()) if niche else "your niche"
+        
         recommendations.extend([
-            "Monitor competitor channels for emerging trends",
-            "Create content around trending themes (covers, retro, AI-generated)",
-            "Use trending keywords in titles and descriptions",
+            f"Monitor competitor channels in {niche_title} for emerging trends",
+            f"Create content around trending {niche_title.lower()} themes" + (f" ({', '.join(themes[:3])})" if themes else ""),
+            f"Use trending keywords in {niche_title.lower()} titles and descriptions",
             "Post during peak engagement times for your audience"
         ])
         

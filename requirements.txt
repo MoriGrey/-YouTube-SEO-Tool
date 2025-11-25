@@ -42,3 +42,10 @@ psutil>=5.9.0
 pytrends>=4.9.2  # Google Trends API
 praw>=7.7.1  # Reddit API (optional)
 tweepy>=4.14.0  # Twitter API (optional)
+
+# Security & Encryption
+cryptography>=41.0.0  # Fernet encryption for API keys
+streamlit-authenticator>=0.2.3  # User authentication
+bcrypt>=4.0.1  # Password hashing
+PyYAML>=6.0  # YAML parsing for auth config
+bleach>=6.0.0  # HTML sanitization (XSS protection)

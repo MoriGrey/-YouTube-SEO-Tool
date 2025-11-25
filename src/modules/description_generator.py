@@ -25,7 +25,9 @@ class DescriptionGenerator:
         video_title: str,
         song_name: Optional[str] = None,
         keywords: Optional[List[str]] = None,
-        custom_info: Optional[str] = None
+        custom_info: Optional[str] = None,
+        niche: Optional[str] = None,
+        channel_handle: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Generate SEO-optimized video description.
@@ -35,18 +37,22 @@ class DescriptionGenerator:
             song_name: Name of the song
             keywords: List of keywords to include
             custom_info: Custom information to add
+            niche: Content niche (e.g., "oriental techno music")
+            channel_handle: YouTube channel handle (e.g., "mori_grey")
         
         Returns:
             Generated description with metadata
         """
         keywords = keywords or []
+        niche = niche or "psychedelic anatolian rock"
+        channel_handle = channel_handle or "anatolianturkishrock"
         
         # Build description sections
-        intro = self._generate_intro(song_name or video_title)
-        main_description = self._generate_main_description(song_name, keywords, custom_info)
-        hashtags = self._generate_hashtags(keywords, song_name)
-        links = self._generate_links()
-        outro = self._generate_outro()
+        intro = self._generate_intro(song_name or video_title, niche)
+        main_description = self._generate_main_description(song_name, keywords, custom_info, niche)
+        hashtags = self._generate_hashtags(keywords, song_name, niche)
+        links = self._generate_links(channel_handle)
+        outro = self._generate_outro(niche)
         
         # Combine
         full_description = "\n\n".join([
@@ -75,12 +81,14 @@ class DescriptionGenerator:
             }
         }
     
-    def _generate_intro(self, song_name: str) -> str:
+    def _generate_intro(self, song_name: str, niche: str = "") -> str:
         """Generate introduction section."""
+        niche_title = " ".join(word.capitalize() for word in niche.split()) if niche else "Psychedelic Anatolian Rock"
+        
         intros = [
-            f"🎸 Welcome to another Psychedelic Anatolian Rock journey! Today we're exploring '{song_name}' - a beautiful fusion of traditional Turkish folk music with 70s psychedelic rock vibes.",
-            f"🌟 Experience '{song_name}' like never before! This AI-powered psychedelic rock cover brings new life to a classic Anatolian folk song.",
-            f"🎵 Dive into '{song_name}' - a mesmerizing blend of Anatolian melodies and psychedelic rock energy, created with artificial intelligence.",
+            f"🎸 Welcome to another {niche_title} journey! Today we're exploring '{song_name}' - a beautiful fusion of {niche_title.lower()} vibes.",
+            f"🌟 Experience '{song_name}' like never before! This {niche_title.lower()} creation brings new life to this track.",
+            f"🎵 Dive into '{song_name}' - a mesmerizing blend of {niche_title.lower()} energy, created with passion.",
         ]
         return intros[0]  # Can randomize
     
@@ -88,29 +96,28 @@ class DescriptionGenerator:
         self,
         song_name: Optional[str],
         keywords: List[str],
-        custom_info: Optional[str]
+        custom_info: Optional[str],
+        niche: str = ""
     ) -> str:
         """Generate main description body."""
+        niche_title = " ".join(word.capitalize() for word in niche.split()) if niche else "Psychedelic Anatolian Rock"
+        
         lines = [
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
             "",
             "📌 ABOUT THIS VIDEO:",
             "",
-            f"• Song: {song_name or 'Traditional Turkish Folk Song'}",
-            "• Genre: Psychedelic Anatolian Rock",
-            "• Style: 70s Psychedelic Rock Cover",
-            "• Production: AI-Generated Music",
+            f"• Song: {song_name or 'Track'}",
+            f"• Genre: {niche_title}",
+            f"• Style: {niche_title}",
             "",
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
             "",
-            "🎯 WHAT IS PSYCHEDELIC ANATOLIAN ROCK?",
+            f"🎯 ABOUT {niche_title.upper()}:",
             "",
-            "Psychedelic Anatolian Rock is a unique fusion genre that combines:",
-            "• Traditional Turkish folk music (Anadolu Rock)",
-            "• 1970s psychedelic rock influences",
-            "• Modern AI-powered music production",
+            f"{niche_title} is a unique genre that combines various musical elements to create something special.",
             "",
-            "This genre brings together the soulful melodies of Anatolian folk songs with the experimental sounds of psychedelic rock, creating something truly special.",
+            f"This genre brings together different influences to create a distinctive {niche_title.lower()} sound.",
         ]
         
         if custom_info:
@@ -126,21 +133,34 @@ class DescriptionGenerator:
     def _generate_hashtags(
         self,
         keywords: List[str],
-        song_name: Optional[str]
+        song_name: Optional[str],
+        niche: str = ""
     ) -> str:
         """Generate hashtags section."""
-        base_hashtags = [
-            "#PsychedelicAnatolianRock",
-            "#AnadoluRock",
-            "#TurkishRock",
-            "#70sRock",
-            "#PsychedelicRock",
-            "#AIMusic",
-            "#TurkishFolk",
-            "#AnatolianMusic",
-            "#RockCover",
-            "#PsychedelicMusic"
-        ]
+        # Generate hashtags from niche
+        niche_words = niche.split() if niche else ["psychedelic", "anatolian", "rock"]
+        base_hashtags = []
+        
+        # Create hashtags from niche words
+        for word in niche_words:
+            if len(word) > 2:  # Skip short words
+                hashtag = "#" + word.capitalize()
+                base_hashtags.append(hashtag)
+        
+        # Add combined niche hashtag
+        if niche:
+            niche_hashtag = "#" + "".join(word.capitalize() for word in niche_words)
+            base_hashtags.insert(0, niche_hashtag)
+        
+        # Fallback if no niche provided
+        if not base_hashtags:
+            base_hashtags = [
+                "#PsychedelicAnatolianRock",
+                "#AnadoluRock",
+                "#TurkishRock",
+                "#70sRock",
+                "#PsychedelicRock"
+            ]
         
         # Add song-specific hashtag if available
         if song_name:
@@ -154,22 +174,27 @@ class DescriptionGenerator:
         
         return "\n" + " ".join(all_hashtags[:15])  # Limit to 15 hashtags
     
-    def _generate_links(self) -> str:
+    def _generate_links(self, channel_handle: str = "") -> str:
         """Generate links section."""
-        return """
+        channel_handle = channel_handle.lstrip("@") if channel_handle else "anatolianturkishrock"
+        channel_url = f"https://www.youtube.com/@{channel_handle}"
+        
+        return f"""
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 🔗 CONNECT WITH US:
 
-📺 Subscribe: https://www.youtube.com/@anatolianturkishrock
-🎵 More Psychedelic Anatolian Rock: [Playlist Link]
+📺 Subscribe: {channel_url}
+🎵 More Content: [Playlist Link]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
     
-    def _generate_outro(self) -> str:
+    def _generate_outro(self, niche: str = "") -> str:
         """Generate outro section."""
-        return """
+        niche_title = " ".join(word.capitalize() for word in niche.split()) if niche else "Psychedelic Anatolian Rock"
+        
+        return f"""
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 💬 LET'S CONNECT:
@@ -177,22 +202,15 @@ class DescriptionGenerator:
 If you enjoyed this video, please:
 👍 Like this video
 💬 Comment your thoughts
-🔔 Subscribe for more Psychedelic Anatolian Rock
-📤 Share with friends who love Turkish music
+🔔 Subscribe for more {niche_title}
+📤 Share with friends who love this music
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 🎨 CREDITS:
 
-Music: AI-Generated Psychedelic Anatolian Rock
-Original: Traditional Turkish Folk Song
-Genre: 70s Psychedelic Rock Cover
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-⚠️ DISCLAIMER:
-
-This is an AI-generated cover of a traditional folk song. All music is created using artificial intelligence technology.
+Music: {niche_title}
+Genre: {niche_title}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
@@ -204,13 +222,12 @@ This is an AI-generated cover of a traditional folk song. All music is created u
         hashtag_count = description.count("#")
         
         # Check for keywords in first 125 characters (visible in search)
-        first_125 = description[:125]
-        keyword_density = {
-            "psychedelic": first_125.lower().count("psychedelic"),
-            "anatolian": first_125.lower().count("anatolian"),
-            "rock": first_125.lower().count("rock"),
-            "turkish": first_125.lower().count("turkish")
-        }
+        first_125 = description[:125].lower()
+        # Extract keywords from description for density check
+        keyword_density = {}
+        # Count common words that might be in niche
+        for word in ["psychedelic", "anatolian", "rock", "turkish", "oriental", "techno", "music"]:
+            keyword_density[word] = first_125.count(word)
         
         # SEO score
         seo_score = 0

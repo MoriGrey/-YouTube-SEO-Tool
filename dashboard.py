@@ -17,6 +17,32 @@ load_dotenv()
 project_root = os.path.dirname(__file__)
 sys.path.insert(0, project_root)
 
+# CRITICAL: Initialize session state keys FIRST, before any imports that use them
+# Streamlit-Authenticator accesses these keys internally
+# According to Streamlit docs: https://docs.streamlit.io/develop/concepts/architecture/session-state#initialization
+# These must be initialized before authenticator methods are called
+if 'logout' not in st.session_state:
+    st.session_state['logout'] = False
+if 'authenticated' not in st.session_state:
+    st.session_state['authenticated'] = False
+if 'username' not in st.session_state:
+    st.session_state['username'] = None
+if 'user_name' not in st.session_state:
+    st.session_state['user_name'] = None
+
+# CRITICAL: Initialize session state keys FIRST, before any imports that use them
+# Streamlit-Authenticator accesses these keys internally
+# According to Streamlit docs: https://docs.streamlit.io/develop/concepts/architecture/session-state#initialization
+# These must be initialized before authenticator methods are called
+if 'logout' not in st.session_state:
+    st.session_state['logout'] = False
+if 'authenticated' not in st.session_state:
+    st.session_state['authenticated'] = False
+if 'username' not in st.session_state:
+    st.session_state['username'] = None
+if 'user_name' not in st.session_state:
+    st.session_state['user_name'] = None
+
 from src.utils.youtube_client import YouTubeClient, create_client
 from src.modules.channel_analyzer import ChannelAnalyzer
 from src.modules.keyword_researcher import KeywordResearcher
@@ -36,8 +62,74 @@ from src.modules.knowledge_graph import KnowledgeGraph
 from src.modules.continuous_learner import ContinuousLearner
 from src.modules.code_self_improver import CodeSelfImprover
 from src.modules.safety_ethics_layer import SafetyEthicsLayer
+from src.modules.video_seo_audit import VideoSEOAudit
+from src.modules.caption_optimizer import CaptionOptimizer
+from src.modules.engagement_booster import EngagementBooster
+from src.modules.thumbnail_enhancer import ThumbnailEnhancer
 from src.utils.i18n import t, get_language, set_language
 from src.utils.process_manager import ProcessManager
+from src.utils.encryption import encrypt_api_key, decrypt_api_key, get_encryption_manager
+from src.utils.logger import get_logger
+from src.utils.auth import get_auth_manager, require_auth
+from src.utils.rate_limiter import get_rate_limiter, check_rate_limit
+from src.utils.input_validator import get_validator, validate_channel_handle, validate_niche, sanitize_string
+
+# Initialize logger
+logger = get_logger("youtube_seo_agi_dashboard")
+
+# Initialize authentication
+# Note: Session state keys are already initialized at the top of the file
+auth_manager = get_auth_manager()
+
+# Initialize rate limiter
+rate_limiter = get_rate_limiter()
+
+# Require authentication (check at the very start)
+if not auth_manager.is_authenticated():
+    # Show login form
+    st.title("🔐 YouTube SEO AGI Tool - Login")
+    st.markdown("---")
+    
+    # Show default credentials info (only if not already shown)
+    if "login_info_shown" not in st.session_state:
+        st.info("""
+        **Default Credentials (for first-time setup):**
+        - Username: `admin`
+        - Password: `admin123`
+        
+        **⚠️ Important:** Change the default password after first login!
+        """)
+        st.session_state.login_info_shown = True
+    
+    # Call login - this will render the login form
+    # Note: login() returns None when form is displayed (waiting for input)
+    login_result = auth_manager.login()
+    
+    if login_result is True:
+        # Login successful, rerun to show dashboard
+        st.rerun()
+    elif login_result is False:
+        # Login failed (wrong credentials)
+        # Error message already shown by auth_manager
+        # Don't stop, let user try again
+        pass
+    else:
+        # login_result is None - form is shown, waiting for user input
+        # Form is already rendered by authenticator.login()
+        # Don't call st.stop() - let the form be visible and wait for user input
+        pass
+
+# Check rate limit for authenticated users
+if auth_manager.is_authenticated():
+    allowed, error_msg = check_rate_limit("dashboard_action")
+    if not allowed:
+        st.error(f"⚠️ **Rate Limit Exceeded**")
+        st.warning(error_msg)
+        rate_status = rate_limiter.get_rate_limit_status()
+        if rate_status.get('blocked'):
+            remaining = rate_status.get('blocked_remaining_minutes', 0)
+            st.info(f"You are temporarily blocked. Please try again in {remaining} minutes.")
+        st.stop()
 
 # Page config
 st.set_page_config(
@@ -48,24 +140,79 @@ st.set_page_config(
 )
 
 # Initialize session state
+# CRITICAL: Initialize required keys for Streamlit-Authenticator BEFORE any usage
+# According to Streamlit docs: https://docs.streamlit.io/develop/concepts/architecture/session-state#initialization
+# These keys must be initialized before authenticator methods are called
+if 'logout' not in st.session_state:
+    st.session_state['logout'] = False
+if 'authenticated' not in st.session_state:
+    st.session_state['authenticated'] = False
+if 'username' not in st.session_state:
+    st.session_state['username'] = None
+if 'user_name' not in st.session_state:
+    st.session_state['user_name'] = None
+# Initialize Streamlit-Authenticator's internal keys if needed
+if '_streamlit_authenticator' not in st.session_state:
+    # This key is used internally by Streamlit-Authenticator
+    pass  # Will be initialized by authenticator itself
+
 # Initialize target channel and niche
 if "target_channel" not in st.session_state:
     st.session_state.target_channel = "anatolianturkishrock"
 if "target_niche" not in st.session_state:
     st.session_state.target_niche = "psychedelic anatolian rock"
+
+# Log app initialization
+if "app_initialized" not in st.session_state:
+    logger.info("Application initialized", app_version="1.0.0")
+    logger.audit_trail("app_started")
+    st.session_state.app_initialized = True
 if "user_api_key" not in st.session_state:
-    st.session_state.user_api_key = os.getenv("YOUTUBE_API_KEY", "")  # Fallback to env var
+    # Try to get from environment variable first (for local/dev)
+    env_key = os.getenv("YOUTUBE_API_KEY", "")
+    st.session_state.user_api_key = env_key
+    # Store encrypted version if we have a key
+    if env_key:
+        try:
+            st.session_state.encrypted_api_key = encrypt_api_key(env_key)
+        except Exception:
+            # If encryption fails, store as plaintext (fallback)
+            st.session_state.encrypted_api_key = env_key
+    else:
+        st.session_state.encrypted_api_key = ""
+if "encrypted_api_key" not in st.session_state:
+    st.session_state.encrypted_api_key = ""
 if "api_key_configured" not in st.session_state:
     st.session_state.api_key_configured = bool(st.session_state.user_api_key)
 
 # Initialize client only if API key is configured
 def initialize_client():
-    """Initialize YouTube client with user's API key."""
+    """Initialize YouTube client with user's API key (decrypted if encrypted)."""
     if not st.session_state.user_api_key:
         return None
+    
+    # Get decrypted API key
+    api_key = st.session_state.user_api_key
+    
+    # If we have encrypted version, try to decrypt
+    if st.session_state.get("encrypted_api_key"):
+        try:
+            encryption_manager = get_encryption_manager()
+            if encryption_manager.is_encrypted(st.session_state.encrypted_api_key):
+                api_key = decrypt_api_key(st.session_state.encrypted_api_key)
+        except Exception as e:
+            # If decryption fails, use plaintext version
+            st.warning("⚠️ API key decryption failed, using plaintext version")
+            api_key = st.session_state.user_api_key
+    
     try:
-        return create_client(api_key=st.session_state.user_api_key)
+        client = create_client(api_key=api_key)
+        logger.info("YouTube client initialized successfully")
+        logger.api_usage("youtube", "client_init", "success")
+        return client
     except Exception as e:
+        logger.error(f"Error initializing YouTube client: {e}", error_type="client_init_error")
+        logger.api_usage("youtube", "client_init", "error", error_message=str(e))
         st.error(f"Error initializing client: {e}")
         return None
 
@@ -125,8 +272,24 @@ if st.session_state.api_key_configured and "client" not in st.session_state:
             st.session_state.viral_predictor
         )
         st.session_state.safety_ethics_layer = SafetyEthicsLayer()
+        st.session_state.video_seo_audit = VideoSEOAudit(
+            st.session_state.client,
+            st.session_state.keyword_researcher,
+            st.session_state.title_optimizer,
+            st.session_state.description_generator,
+            st.session_state.tag_suggester
+        )
+        st.session_state.caption_optimizer = CaptionOptimizer(
+            st.session_state.client,
+            st.session_state.keyword_researcher
+        )
+        st.session_state.engagement_booster = EngagementBooster(st.session_state.client)
+        st.session_state.thumbnail_enhancer = ThumbnailEnhancer(st.session_state.client)
         st.session_state.process_manager = ProcessManager()
+        logger.info("All modules initialized successfully")
     except Exception as e:
+        logger.error(f"Error initializing modules: {e}", error_type="module_init_error", 
+                    module_count=len([k for k in st.session_state.keys() if not k.startswith('_')]))
         st.error(f"Error initializing: {e}")
         st.stop()
 
@@ -228,7 +391,13 @@ def render_channel_niche_inputs():
             key=f"channel_input_{st.session_state.get('page_counter', 0)}",
             help=t("forms.channel_help")
         )
-        st.session_state.target_channel = channel.lstrip("@").strip()
+        # Validate channel handle
+        is_valid, error_msg = validate_channel_handle(channel)
+        if not is_valid and channel:  # Only show error if user entered something
+            st.error(f"⚠️ {error_msg}")
+            logger.warning(f"Invalid channel handle: {error_msg}", channel_input=channel[:20])
+        else:
+            st.session_state.target_channel = channel.lstrip("@").strip()
     with col2:
         niche = st.text_input(
             t("forms.niche"), 
@@ -236,23 +405,41 @@ def render_channel_niche_inputs():
             key=f"niche_input_{st.session_state.get('page_counter', 0)}",
             help=t("forms.niche_help")
         )
-        st.session_state.target_niche = niche.strip()
+        # Validate niche
+        is_valid, error_msg = validate_niche(niche)
+        if not is_valid and niche:  # Only show error if user entered something
+            st.error(f"⚠️ {error_msg}")
+            logger.warning(f"Invalid niche: {error_msg}", niche_input=niche[:50])
+        else:
+            # Sanitize niche
+            st.session_state.target_niche = sanitize_string(niche.strip(), max_length=200)
     st.markdown("---")
 
 # Sidebar
 with st.sidebar:
     st.title(t("app.title"))
     
+    # User Info & Logout
+    if auth_manager.is_authenticated():
+        user_name = auth_manager.get_user_name()
+        username = auth_manager.get_username()
+        st.markdown(f"**👤 User:** {user_name or username}")
+        st.markdown("---")
+    
     # API Key Management (Multi-user support)
-    st.markdown("---")
     st.markdown("### 🔑 API Key")
     
     # Show current status
     if st.session_state.api_key_configured:
         st.success("✅ API Key Configured")
         if st.button("🔄 Change API Key"):
+            # Log security event
+            logger.security_event("api_key_change_initiated", "User initiated API key change")
+            logger.audit_trail("api_key_changed", action_type="change_initiated")
+            
             st.session_state.api_key_configured = False
             st.session_state.user_api_key = ""
+            st.session_state.encrypted_api_key = ""
             if "client" in st.session_state:
                 del st.session_state.client
             st.rerun()
@@ -267,15 +454,53 @@ with st.sidebar:
         )
         
         if st.button("💾 Save API Key", type="primary"):
-            if api_key_input and len(api_key_input) > 20:
-                st.session_state.user_api_key = api_key_input.strip()
-                st.session_state.api_key_configured = True
-                # Reinitialize modules with new API key
-                if "client" in st.session_state:
-                    del st.session_state.client
-                st.rerun()
+            if api_key_input:
+                # Validate API key format
+                validator = get_validator()
+                is_valid, error_msg = validator.validate_api_key(api_key_input.strip())
+                
+                if not is_valid:
+                    st.error(f"⚠️ {error_msg}")
+                    logger.warning(f"Invalid API key format: {error_msg}")
+                elif len(api_key_input.strip()) > 20:
+                    try:
+                        # Encrypt API key before storing
+                        encrypted_key = encrypt_api_key(api_key_input.strip())
+                        
+                        # Store both encrypted and plaintext (plaintext only in memory for current session)
+                        st.session_state.user_api_key = api_key_input.strip()
+                        st.session_state.encrypted_api_key = encrypted_key
+                        st.session_state.api_key_configured = True
+                        
+                        # Log security event
+                        logger.security_event(
+                            "api_key_saved",
+                            "API key saved and encrypted",
+                            key_length=len(api_key_input.strip()),
+                            encrypted=True
+                        )
+                        logger.audit_trail("api_key_changed", action_type="save")
+                        
+                        # Reinitialize modules with new API key
+                        if "client" in st.session_state:
+                            del st.session_state.client
+                        st.rerun()
+                    except Exception as e:
+                        logger.error(f"Failed to encrypt API key: {e}", error_type="encryption_error")
+                        st.error(f"Failed to encrypt API key: {e}")
+                        # Fallback: store as plaintext (not recommended but better than failing)
+                        st.warning("⚠️ Encryption failed, storing as plaintext (not secure)")
+                        logger.warning("API key stored as plaintext due to encryption failure")
+                        st.session_state.user_api_key = api_key_input.strip()
+                        st.session_state.encrypted_api_key = api_key_input.strip()
+                        st.session_state.api_key_configured = True
+                        if "client" in st.session_state:
+                            del st.session_state.client
+                        st.rerun()
+                else:
+                    st.error("Please enter a valid API key (at least 20 characters)")
             else:
-                st.error("Please enter a valid API key (at least 20 characters)")
+                st.error("Please enter an API key")
     
     st.markdown("---")
     
@@ -321,9 +546,47 @@ with st.sidebar:
             t("navigation.knowledge_graph"),
             t("navigation.continuous_learning"),
             t("navigation.code_self_improvement"),
-            t("navigation.safety_ethics")
+            t("navigation.safety_ethics"),
+            "🔍 Video SEO Audit",
+            "📝 Caption Optimizer",
+            "🎯 Engagement Booster",
+            "🖼️ Thumbnail Enhancer"
         ]
     )
+    
+    # Rate Limit Status
+    if auth_manager.is_authenticated():
+        st.markdown("---")
+        rate_status = rate_limiter.get_rate_limit_status()
+        if rate_status.get('blocked'):
+            st.error("🚫 **Rate Limited**")
+            remaining = rate_status.get('blocked_remaining_minutes', 0)
+            st.caption(f"Blocked for {remaining} more minutes")
+        else:
+            st.info("✅ **Rate Limit OK**")
+            st.caption(f"{rate_status['requests_last_minute']}/{rate_status['limits']['per_minute']} per minute")
+    
+    # Logout button
+    st.markdown("---")
+    if auth_manager.is_authenticated():
+        # Initialize logout key if not exists
+        if 'logout' not in st.session_state:
+            st.session_state['logout'] = False
+        
+        if st.button("🚪 Logout", use_container_width=True):
+            try:
+                auth_manager.logout()
+                # Clear all session state
+                for key in list(st.session_state.keys()):
+                    if key not in ['_streamlit_authenticator']:
+                        del st.session_state[key]
+                st.rerun()
+            except Exception as e:
+                # Manual logout if authenticator fails
+                st.session_state['authenticated'] = False
+                st.session_state['username'] = None
+                st.session_state['user_name'] = None
+                st.rerun()
 
 # Main content
 current_lang = get_language()
@@ -350,7 +613,11 @@ def is_page(page_key):
         "knowledge_graph": [t("navigation.knowledge_graph"), "🧠 Knowledge Graph", "🧠 Bilgi Grafiği"],
         "continuous_learning": [t("navigation.continuous_learning"), "🔄 Continuous Learning", "🔄 Sürekli Öğrenme"],
         "code_self_improvement": [t("navigation.code_self_improvement"), "⚙️ Code Self-Improvement", "⚙️ Kod Kendini Geliştirme"],
-        "safety_ethics": [t("navigation.safety_ethics"), "🛡️ Safety & Ethics", "🛡️ Güvenlik ve Etik"]
+        "safety_ethics": [t("navigation.safety_ethics"), "🛡️ Safety & Ethics", "🛡️ Güvenlik ve Etik"],
+        "video_seo_audit": ["🔍 Video SEO Audit", "🔍 Video SEO Audit", "🔍 Video SEO Denetimi"],
+        "caption_optimizer": ["📝 Caption Optimizer", "📝 Caption Optimizer", "📝 Altyazı Optimizasyonu"],
+        "engagement_booster": ["🎯 Engagement Booster", "🎯 Engagement Booster", "🎯 Etkileşim Artırıcı"],
+        "thumbnail_enhancer": ["🖼️ Thumbnail Enhancer", "🖼️ Thumbnail Enhancer", "🖼️ Küçük Resim Geliştirici"]
     }
     return page in page_translations.get(page_key, [])
 
@@ -384,6 +651,17 @@ if is_page("dashboard"):
         if not st.session_state.target_channel or not st.session_state.target_channel.strip():
             st.warning(t("messages.channel_not_found") + " " + t("forms.channel_help"))
         else:
+            # Check rate limit before API call
+            allowed, error_msg = check_rate_limit("youtube_api")
+            if not allowed:
+                st.error(f"⚠️ **Rate Limit Exceeded**")
+                st.warning(error_msg)
+                rate_status = rate_limiter.get_rate_limit_status()
+                if rate_status.get('blocked'):
+                    remaining = rate_status.get('blocked_remaining_minutes', 0)
+                    st.info(f"Please try again in {remaining} minutes.")
+                st.stop()
+            
             channel_data = st.session_state.client.get_channel_by_handle(st.session_state.target_channel)
             if channel_data.get("items"):
                 channel = channel_data["items"][0]
@@ -665,6 +943,125 @@ elif is_page("competitor_analysis"):
                 
             except Exception as e:
                 st.error(t("messages.error_loading", error=str(e)))
+    
+    # Gap Analysis Section
+    st.markdown("---")
+    st.markdown("### 🔍 Gap Analysis")
+    st.markdown("Compare your channel with competitors to identify content, keyword, and strategy gaps.")
+    
+    your_channel_handle_gap = st.text_input(
+        "Your Channel Handle (e.g., anatolianturkishrock)",
+        value=st.session_state.target_channel if st.session_state.target_channel else "",
+        key="gap_your_channel"
+    )
+    
+    competitor_handles_input = st.text_area(
+        "Competitor Channel Handles (one per line, e.g., competitor1, competitor2)",
+        value="",
+        key="gap_competitors",
+        help="Enter competitor channel handles without @ symbol, one per line"
+    )
+    
+    max_videos_gap = st.slider(
+        "Max Videos to Analyze per Channel",
+        min_value=5,
+        max_value=20,
+        value=10,
+        key="gap_max_videos"
+    )
+    
+    if st.button("🔍 Analyze Gaps", use_container_width=True, key="gap_analyze_button"):
+        if not your_channel_handle_gap:
+            st.error("Please enter your channel handle")
+        elif not competitor_handles_input.strip():
+            st.error("Please enter at least one competitor channel handle")
+        else:
+            with st.spinner("Analyzing gaps... This may take a while..."):
+                try:
+                    competitor_handles = [h.strip().replace("@", "") for h in competitor_handles_input.split("\n") if h.strip()]
+                    
+                    gaps = st.session_state.competitor_analyzer.analyze_gaps(
+                        your_channel_handle_gap,
+                        competitor_handles,
+                        max_videos_per_channel=max_videos_gap
+                    )
+                    
+                    if gaps.get("error"):
+                        st.error(f"Error: {gaps['error']}")
+                    else:
+                        # Display Opportunities
+                        if gaps.get("opportunities"):
+                            st.markdown("#### 🎯 Opportunities")
+                            opp_cols = st.columns(min(len(gaps["opportunities"]), 3))
+                            for idx, opp in enumerate(gaps["opportunities"]):
+                                col_idx = idx % 3
+                                with opp_cols[col_idx]:
+                                    priority_color = "error" if opp.get("priority") == "high" else "warning" if opp.get("priority") == "medium" else "info"
+                                    render_card(
+                                        title=opp.get("title", "Opportunity"),
+                                        content=opp.get("description", ""),
+                                        metric=opp.get("priority", "low").upper(),
+                                        icon="🎯",
+                                        color=priority_color,
+                                        subtitle=opp.get("action", "")[:50] + "..." if len(opp.get("action", "")) > 50 else opp.get("action", "")
+                                    )
+                        
+                        # Keyword Gaps
+                        if gaps.get("keyword_gaps"):
+                            st.markdown("#### 🔑 Missing Keywords")
+                            st.info(f"Competitors use {len(gaps['keyword_gaps'])} keywords you don't. Consider adding these:")
+                            keyword_cols = st.columns(4)
+                            for idx, keyword in enumerate(gaps["keyword_gaps"][:20]):
+                                with keyword_cols[idx % 4]:
+                                    st.code(keyword, language=None)
+                        
+                        # Tag Gaps
+                        if gaps.get("tag_gaps"):
+                            st.markdown("#### 🏷️ Missing Tags")
+                            st.info(f"Competitors use {len(gaps['tag_gaps'])} tags you don't. Consider adding these:")
+                            tag_cols = st.columns(5)
+                            for idx, tag in enumerate(gaps["tag_gaps"][:30]):
+                                with tag_cols[idx % 5]:
+                                    st.code(tag, language=None)
+                        
+                        # Content Gaps
+                        if gaps.get("content_gaps"):
+                            st.markdown("#### 📝 Content Strategy Gaps")
+                            for content_gap in gaps["content_gaps"]:
+                                st.warning(f"**{content_gap.get('type', 'Gap')}**: {content_gap.get('recommendation', '')}")
+                        
+                        # Timing Gaps
+                        if gaps.get("timing_gaps") and gaps["timing_gaps"].get("competitor_peak_hours"):
+                            st.markdown("#### ⏰ Upload Timing Analysis")
+                            timing = gaps["timing_gaps"]
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.metric("Competitor Peak Hours", ", ".join(map(str, timing.get("competitor_peak_hours", []))))
+                            with col2:
+                                st.metric("Your Peak Hours", ", ".join(map(str, timing.get("your_peak_hours", []))))
+                            if timing.get("recommendation"):
+                                st.info(timing["recommendation"])
+                        
+                        # Description Gaps
+                        if gaps.get("description_gaps") and gaps["description_gaps"].get("recommendations"):
+                            st.markdown("#### 📄 Description Strategy Gaps")
+                            desc_gaps = gaps["description_gaps"]
+                            col1, col2, col3, col4 = st.columns(4)
+                            with col1:
+                                st.metric("Length Gap", f"{int(desc_gaps.get('length_gap', 0))} chars")
+                            with col2:
+                                st.metric("Word Count Gap", f"{int(desc_gaps.get('word_count_gap', 0))} words")
+                            with col3:
+                                st.metric("Links Usage Gap", f"{desc_gaps.get('links_usage_gap', 0):.1%}")
+                            with col4:
+                                st.metric("Hashtag Gap", f"{int(desc_gaps.get('hashtag_gap', 0))}")
+                            
+                            for rec in desc_gaps.get("recommendations", []):
+                                st.info(rec)
+                
+                except Exception as e:
+                    st.error(f"Gap analysis failed: {str(e)}")
+                    logger.exception("Gap analysis error")
 
 elif is_page("title_optimizer"):
     st.title(t("pages.title_optimizer.title"))
@@ -678,8 +1075,10 @@ elif is_page("title_optimizer"):
     if st.button(t("pages.title_optimizer.generate_button"), use_container_width=True):
         with st.spinner(t("messages.generating")):
             try:
+                # Get niche from session state
+                niche = st.session_state.get("target_niche", "psychedelic anatolian rock")
                 variations = st.session_state.title_optimizer.generate_title_variations(
-                    title, song_name, num_variations=5
+                    title, song_name, num_variations=5, niche=niche
                 )
                 
                 st.markdown(f"### {t('pages.title_optimizer.variations')}")
@@ -718,8 +1117,11 @@ elif is_page("description_generator"):
     if st.button(t("pages.description_generator.generate_button"), use_container_width=True):
         with st.spinner(t("messages.generating")):
             try:
+                # Get niche and channel from session state
+                niche = st.session_state.get("target_niche", "psychedelic anatolian rock")
+                channel = st.session_state.get("target_channel", "anatolianturkishrock")
                 result = st.session_state.description_generator.generate_description(
-                    video_title, song_name, custom_info=custom_info
+                    video_title, song_name, custom_info=custom_info, niche=niche, channel_handle=channel
                 )
                 
                 st.markdown(f"### {t('pages.description_generator.generated_description')}")
@@ -784,7 +1186,9 @@ elif is_page("tag_suggester"):
     if st.button(t("pages.tag_suggester.suggest_button"), use_container_width=True):
         with st.spinner(t("messages.generating")):
             try:
-                result = st.session_state.tag_suggester.suggest_tags(video_title, song_name)
+                # Get niche from session state
+                niche = st.session_state.get("target_niche", "psychedelic anatolian rock")
+                result = st.session_state.tag_suggester.suggest_tags(video_title, song_name, niche=niche)
                 
                 st.markdown(f"### {t('pages.tag_suggester.suggested_tags')}")
                 tags_text = ", ".join(result["suggested_tags"])
@@ -1202,6 +1606,266 @@ elif is_page("performance_tracking"):
                     
             except Exception as e:
                 st.error(f"Error: {e}")
+    
+    # Performance Forecasting Section
+    st.markdown("---")
+    st.markdown("### 📈 Performance Forecasting")
+    st.markdown("Forecast future performance based on historical data and analyze different strategy scenarios.")
+    
+    forecast_days = st.selectbox(
+        "Forecast Period",
+        options=[7, 30, 90, 180, 365],
+        index=1,  # Default to 30 days
+        key="forecast_days"
+    )
+    
+    forecast_scenarios = st.multiselect(
+        "Scenarios to Analyze",
+        options=["realistic", "optimistic", "pessimistic"],
+        default=["realistic", "optimistic"],
+        key="forecast_scenarios"
+    )
+    
+    if st.button("🔮 Generate Forecast", use_container_width=True, key="forecast_button"):
+        with st.spinner("Generating forecast... This may take a moment..."):
+            try:
+                forecast = st.session_state.performance_tracker.forecast_performance(
+                    st.session_state.target_channel,
+                    days_ahead=forecast_days,
+                    scenarios=forecast_scenarios if forecast_scenarios else None
+                )
+                
+                if forecast.get("error"):
+                    st.error(f"Error: {forecast.get('error')} - {forecast.get('message', '')}")
+                else:
+                    # Current Metrics
+                    st.markdown("#### Current Metrics")
+                    current = forecast.get("current_metrics", {})
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Subscribers", f"{current.get('subscribers', 0):,}")
+                    with col2:
+                        st.metric("Total Views", f"{current.get('total_views', 0):,}")
+                    with col3:
+                        st.metric("Videos", current.get('total_videos', 0))
+                    with col4:
+                        st.metric("Avg Views/Video", f"{current.get('average_views_per_video', 0):,.0f}")
+                    
+                    # Forecast Scenarios
+                    st.markdown("#### Forecast Scenarios")
+                    scenarios = forecast.get("scenarios", {})
+                    
+                    for scenario_name, scenario_data in scenarios.items():
+                        st.markdown(f"##### {scenario_name.title()} Scenario")
+                        scenario_cols = st.columns(4)
+                        
+                        subs_data = scenario_data.get("subscribers", {})
+                        views_data = scenario_data.get("views", {})
+                        videos_data = scenario_data.get("videos", {})
+                        milestone_data = scenario_data.get("milestone", {})
+                        
+                        with scenario_cols[0]:
+                            render_card(
+                                title="Projected Subscribers",
+                                content=f"Change: +{subs_data.get('change', 0):,}",
+                                metric=f"{subs_data.get('projected', 0):,}",
+                                icon="👥",
+                                color="success" if subs_data.get('change', 0) > 0 else "info"
+                            )
+                        with scenario_cols[1]:
+                            render_card(
+                                title="Projected Views",
+                                content=f"Change: +{views_data.get('change', 0):,}",
+                                metric=f"{views_data.get('projected', 0):,}",
+                                icon="👁️",
+                                color="success" if views_data.get('change', 0) > 0 else "info"
+                            )
+                        with scenario_cols[2]:
+                            render_card(
+                                title="New Videos",
+                                content=f"Total: {videos_data.get('projected', 0)}",
+                                metric=f"+{videos_data.get('new_videos', 0)}",
+                                icon="📹",
+                                color="info"
+                            )
+                        with scenario_cols[3]:
+                            days_to_1m = milestone_data.get("days_to_1m")
+                            if days_to_1m:
+                                render_card(
+                                    title="Days to 1M",
+                                    content=f"Date: {datetime.fromisoformat(milestone_data['projected_1m_date']).strftime('%Y-%m-%d')}" if milestone_data.get("projected_1m_date") else "",
+                                    metric=f"{days_to_1m:,.0f}",
+                                    icon="🎯",
+                                    color="warning"
+                                )
+                            else:
+                                render_card(
+                                    title="Days to 1M",
+                                    content="Insufficient growth rate",
+                                    metric="N/A",
+                                    icon="🎯",
+                                    color="error"
+                                )
+                    
+                    # Confidence
+                    confidence = forecast.get("confidence", {})
+                    if confidence:
+                        st.markdown("#### Forecast Confidence")
+                        conf_level = confidence.get("level", "unknown")
+                        conf_score = confidence.get("score", 0)
+                        conf_color = "success" if conf_level == "high" else "warning" if conf_level == "medium" else "error"
+                        render_card(
+                            title="Confidence Level",
+                            content=f"Based on {confidence.get('snapshot_count', 0)} snapshots",
+                            metric=f"{conf_level.upper()} ({conf_score}%)",
+                            icon="📊",
+                            color=conf_color
+                        )
+                    
+                    # Recommendations
+                    recommendations = forecast.get("recommendations", [])
+                    if recommendations:
+                        st.markdown("#### Forecast Recommendations")
+                        for rec in recommendations:
+                            st.info(rec)
+            
+            except Exception as e:
+                st.error(f"Forecast error: {e}")
+    
+    # Scenario Impact Analysis
+    st.markdown("---")
+    st.markdown("### 🎯 Strategy Impact Analysis")
+    st.markdown("Analyze the impact of different strategy changes on future performance.")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        upload_freq = st.number_input(
+            "Upload Frequency (videos/week)",
+            min_value=0.0,
+            max_value=10.0,
+            value=1.0,
+            step=0.5,
+            key="strategy_upload_freq"
+        )
+        ctr_improvement = st.slider(
+            "CTR Improvement (%)",
+            min_value=0,
+            max_value=50,
+            value=10,
+            key="strategy_ctr"
+        ) / 100.0
+    with col2:
+        engagement_improvement = st.slider(
+            "Engagement Improvement (%)",
+            min_value=0,
+            max_value=50,
+            value=10,
+            key="strategy_engagement"
+        ) / 100.0
+        seo_optimization = st.slider(
+            "SEO Optimization Impact (%)",
+            min_value=0,
+            max_value=50,
+            value=10,
+            key="strategy_seo"
+        ) / 100.0
+    
+    strategy_changes = {}
+    if upload_freq > 0:
+        strategy_changes["upload_frequency"] = upload_freq
+    if ctr_improvement > 0:
+        strategy_changes["ctr_improvement"] = ctr_improvement
+    if engagement_improvement > 0:
+        strategy_changes["engagement_improvement"] = engagement_improvement
+    if seo_optimization > 0:
+        strategy_changes["seo_optimization"] = seo_optimization
+    
+    scenario_days = st.selectbox(
+        "Analysis Period (days)",
+        options=[7, 30, 90, 180],
+        index=1,
+        key="scenario_days"
+    )
+    
+    if st.button("📊 Analyze Strategy Impact", use_container_width=True, key="scenario_button"):
+        if not strategy_changes:
+            st.warning("Please select at least one strategy change to analyze.")
+        else:
+            with st.spinner("Analyzing strategy impact..."):
+                try:
+                    impact = st.session_state.performance_tracker.analyze_scenario_impact(
+                        st.session_state.target_channel,
+                        strategy_changes,
+                        days_ahead=scenario_days
+                    )
+                    
+                    if impact.get("error"):
+                        st.error(f"Error: {impact.get('error')}")
+                    else:
+                        # Strategy Changes Summary
+                        st.markdown("#### Strategy Changes")
+                        changes = impact.get("strategy_changes", {})
+                        changes_text = []
+                        if "upload_frequency" in changes:
+                            changes_text.append(f"Upload Frequency: {changes['upload_frequency']} videos/week")
+                        if "ctr_improvement" in changes:
+                            changes_text.append(f"CTR Improvement: {changes['ctr_improvement']*100:.0f}%")
+                        if "engagement_improvement" in changes:
+                            changes_text.append(f"Engagement Improvement: {changes['engagement_improvement']*100:.0f}%")
+                        if "seo_optimization" in changes:
+                            changes_text.append(f"SEO Optimization: {changes['seo_optimization']*100:.0f}%")
+                        st.info(" | ".join(changes_text))
+                        
+                        # Impact Comparison
+                        st.markdown("#### Impact Comparison")
+                        impact_data = impact.get("impact", {})
+                        
+                        subs_impact = impact_data.get("subscribers", {})
+                        views_impact = impact_data.get("views", {})
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.markdown("**Subscribers Impact**")
+                            render_card(
+                                title="Baseline",
+                                content="Without strategy changes",
+                                metric=f"{subs_impact.get('baseline', 0):,}",
+                                icon="📊",
+                                color="info"
+                            )
+                            render_card(
+                                title="With Strategy",
+                                content=f"Change: {subs_impact.get('change_percent', 0):+.1f}%",
+                                metric=f"{subs_impact.get('modified', 0):,}",
+                                icon="📈",
+                                color="success" if subs_impact.get('change', 0) > 0 else "error"
+                            )
+                        with col2:
+                            st.markdown("**Views Impact**")
+                            render_card(
+                                title="Baseline",
+                                content="Without strategy changes",
+                                metric=f"{views_impact.get('baseline', 0):,}",
+                                icon="📊",
+                                color="info"
+                            )
+                            render_card(
+                                title="With Strategy",
+                                content=f"Change: {views_impact.get('change_percent', 0):+.1f}%",
+                                metric=f"{views_impact.get('modified', 0):,}",
+                                icon="📈",
+                                color="success" if views_impact.get('change', 0) > 0 else "error"
+                            )
+                        
+                        # Recommendations
+                        recommendations = impact.get("recommendations", [])
+                        if recommendations:
+                            st.markdown("#### Strategy Recommendations")
+                            for rec in recommendations:
+                                st.info(rec)
+                
+                except Exception as e:
+                    st.error(f"Strategy analysis error: {e}")
 
 elif is_page("milestone_tracker"):
     st.title(t("pages.milestone_tracker.title"))
@@ -3177,6 +3841,487 @@ elif is_page("safety_ethics"):
                     st.success("✅ No violations detected recently!")
         except Exception as e:
             st.error(f"Error: {e}")
+
+elif is_page("video_seo_audit"):
+    st.title("🔍 Video SEO Audit")
+    st.markdown("Comprehensive SEO analysis for your videos")
+    
+    render_channel_niche_inputs()
+    
+    # Video selection
+    video_id_input = st.text_input(
+        "Video ID or URL",
+        placeholder="Enter YouTube video ID or full URL",
+        help="You can find the video ID in the YouTube URL: youtube.com/watch?v=VIDEO_ID"
+    )
+    
+    if video_id_input:
+        # Extract video ID from URL if needed
+        video_id = video_id_input
+        if "youtube.com" in video_id or "youtu.be" in video_id:
+            import re
+            video_id_match = re.search(r'(?:v=|\/)([0-9A-Za-z_-]{11}).*', video_id)
+            if video_id_match:
+                video_id = video_id_match.group(1)
+        
+        if st.button("🔍 Audit Video", use_container_width=True, type="primary"):
+            with st.spinner("Analyzing video SEO..."):
+                try:
+                    audit_result = st.session_state.video_seo_audit.audit_video(video_id)
+                    
+                    if "error" in audit_result:
+                        st.error(f"Error: {audit_result['error']}")
+                    else:
+                        # Overall Score
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Overall SEO Score", f"{audit_result['overall_seo_score']}/100", 
+                                     audit_result.get('seo_grade', 'N/A'))
+                        with col2:
+                            improvement = audit_result.get('improvement_potential', {})
+                            st.metric("Improvement Potential", 
+                                     f"+{improvement.get('improvement_points', 0)} points")
+                        with col3:
+                            st.metric("SEO Grade", audit_result.get('seo_grade', 'N/A'))
+                        
+                        st.markdown("---")
+                        
+                        # Detailed Analysis
+                        st.subheader("📊 Detailed Analysis")
+                        audit_details = audit_result.get('audit_details', {})
+                        
+                        tabs = st.tabs(["Title", "Description", "Tags", "Thumbnail"])
+                        
+                        with tabs[0]:
+                            title_audit = audit_details.get('title', {})
+                            st.metric("Title Score", f"{title_audit.get('score', 0)}/100", 
+                                     title_audit.get('status', 'unknown'))
+                            st.write(f"**Title:** {title_audit.get('title', 'N/A')}")
+                            st.write(f"**Length:** {title_audit.get('length', 0)} characters")
+                            if title_audit.get('recommendations'):
+                                st.write("**Recommendations:**")
+                                for rec in title_audit['recommendations']:
+                                    st.write(f"- {rec}")
+                        
+                        with tabs[1]:
+                            desc_audit = audit_details.get('description', {})
+                            st.metric("Description Score", f"{desc_audit.get('score', 0)}/100",
+                                     desc_audit.get('status', 'unknown'))
+                            st.write(f"**Word Count:** {desc_audit.get('word_count', 0)}")
+                            st.write(f"**Character Count:** {desc_audit.get('character_count', 0)}")
+                            st.write(f"**Hashtags:** {desc_audit.get('hashtag_count', 0)}")
+                            if desc_audit.get('recommendations'):
+                                st.write("**Recommendations:**")
+                                for rec in desc_audit['recommendations']:
+                                    st.write(f"- {rec}")
+                        
+                        with tabs[2]:
+                            tags_audit = audit_details.get('tags', {})
+                            st.metric("Tags Score", f"{tags_audit.get('score', 0)}/100",
+                                     tags_audit.get('status', 'unknown'))
+                            st.write(f"**Tag Count:** {tags_audit.get('tag_count', 0)}")
+                            st.write(f"**Keyword Coverage:** {tags_audit.get('keyword_coverage', 'N/A')}")
+                            if tags_audit.get('recommendations'):
+                                st.write("**Recommendations:**")
+                                for rec in tags_audit['recommendations']:
+                                    st.write(f"- {rec}")
+                        
+                        with tabs[3]:
+                            thumb_audit = audit_details.get('thumbnail', {})
+                            st.metric("Thumbnail Score", f"{thumb_audit.get('score', 0)}/100",
+                                     thumb_audit.get('status', 'unknown'))
+                            if thumb_audit.get('recommendations'):
+                                st.write("**Recommendations:**")
+                                for rec in thumb_audit['recommendations']:
+                                    st.write(f"- {rec}")
+                        
+                        # Priority Actions
+                        st.markdown("---")
+                        st.subheader("🎯 Priority Actions")
+                        priority_actions = audit_result.get('priority_actions', [])
+                        for action in priority_actions[:5]:
+                            with st.expander(f"{action.get('action', 'Action')} - Priority: {action.get('priority', 'medium').upper()}"):
+                                st.write(f"**Current Score:** {action.get('current_score', 0)}/100")
+                                st.write(f"**Impact:** {action.get('impact', 'medium')}")
+                                st.write(f"**Quick Fix:** {action.get('quick_fix', 'N/A')}")
+                        
+                        # Recommendations
+                        st.markdown("---")
+                        st.subheader("💡 Recommendations")
+                        recommendations = audit_result.get('recommendations', [])
+                        for rec in recommendations:
+                            with st.expander(f"{rec.get('category', 'General').title()} - {rec.get('priority', 'medium').upper()} Priority"):
+                                st.write(rec.get('message', ''))
+                                if rec.get('details'):
+                                    st.write("**Details:**")
+                                    for detail in rec['details']:
+                                        st.write(f"- {detail}")
+                
+                except Exception as e:
+                    st.error(f"Error: {e}")
+                    import traceback
+                    st.code(traceback.format_exc())
+
+elif is_page("caption_optimizer"):
+    st.title("📝 Caption & Transcript Optimizer")
+    st.markdown("Optimize your video captions for better SEO")
+    
+    render_channel_niche_inputs()
+    
+    video_id_input = st.text_input(
+        "Video ID or URL",
+        placeholder="Enter YouTube video ID or full URL"
+    )
+    
+    if video_id_input:
+        import re
+        video_id = video_id_input
+        if "youtube.com" in video_id or "youtu.be" in video_id:
+            video_id_match = re.search(r'(?:v=|\/)([0-9A-Za-z_-]{11}).*', video_id)
+            if video_id_match:
+                video_id = video_id_match.group(1)
+        
+        tab1, tab2, tab3 = st.tabs(["Analyze Captions", "Optimize", "Multilingual Support"])
+        
+        with tab1:
+            if st.button("📊 Analyze Captions", use_container_width=True, type="primary"):
+                with st.spinner("Analyzing captions..."):
+                    try:
+                        keywords_input = st.text_input("Target Keywords (comma-separated)", 
+                                                       value="psychedelic, anatolian, rock, turkish, 70s")
+                        keywords = [k.strip() for k in keywords_input.split(",")] if keywords_input else None
+                        
+                        analysis = st.session_state.caption_optimizer.analyze_captions(video_id, keywords)
+                        
+                        if "error" in analysis:
+                            st.error(f"Error: {analysis['error']}")
+                        else:
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("SEO Score", f"{analysis.get('seo_score', 0)}/100")
+                            with col2:
+                                st.metric("Word Count", analysis.get('word_count', 0))
+                            with col3:
+                                st.metric("Keywords Found", f"{analysis.get('keywords_in_first_200', 0)}/{analysis.get('total_keywords', 0)}")
+                            
+                            st.markdown("---")
+                            st.subheader("Keyword Analysis")
+                            keyword_analysis = analysis.get('keyword_analysis', {})
+                            for keyword, data in keyword_analysis.items():
+                                with st.expander(f"Keyword: {keyword}"):
+                                    st.write(f"**Count:** {data.get('count', 0)}")
+                                    st.write(f"**Density:** {data.get('density', 0)}%")
+                                    st.write(f"**Present:** {'Yes' if data.get('present') else 'No'}")
+                            
+                            st.markdown("---")
+                            st.subheader("Recommendations")
+                            for rec in analysis.get('recommendations', []):
+                                st.write(f"- {rec}")
+                            
+                            if analysis.get('transcript_preview'):
+                                with st.expander("Transcript Preview"):
+                                    st.text(analysis['transcript_preview'])
+                    
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+        
+        with tab2:
+            if st.button("✨ Optimize Captions", use_container_width=True, type="primary"):
+                with st.spinner("Generating optimization suggestions..."):
+                    try:
+                        keywords_input = st.text_input("Target Keywords (comma-separated)", 
+                                                       value="psychedelic, anatolian, rock, turkish, 70s",
+                                                       key="optimize_keywords")
+                        keywords = [k.strip() for k in keywords_input.split(",")] if keywords_input else None
+                        
+                        optimization = st.session_state.caption_optimizer.optimize_captions(video_id, keywords)
+                        
+                        if "error" in optimization:
+                            st.error(f"Error: {optimization['error']}")
+                        else:
+                            st.metric("Current SEO Score", f"{optimization.get('current_seo_score', 0)}/100")
+                            improvement = optimization.get('estimated_improvement', {})
+                            st.metric("Potential Score", f"{improvement.get('potential_score', 0)}/100",
+                                     f"+{improvement.get('improvement_points', 0)} points")
+                            
+                            st.markdown("---")
+                            st.subheader("Optimization Suggestions")
+                            suggestions = optimization.get('optimization_suggestions', [])
+                            for suggestion in suggestions:
+                                with st.expander(f"{suggestion.get('keyword', 'General')} - {suggestion.get('action', 'optimize')}"):
+                                    st.write(suggestion.get('suggestion', ''))
+                                    if suggestion.get('example'):
+                                        st.code(suggestion['example'])
+                            
+                            st.markdown("---")
+                            st.subheader("Best Practices")
+                            for practice in optimization.get('best_practices', []):
+                                st.write(f"✅ {practice}")
+                    
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+        
+        with tab3:
+            if st.button("🌍 Check Multilingual Support", use_container_width=True, type="primary"):
+                with st.spinner("Checking multilingual support..."):
+                    try:
+                        support = st.session_state.caption_optimizer.get_multilingual_support(video_id)
+                        
+                        if "error" in support:
+                            st.error(f"Error: {support['error']}")
+                        else:
+                            st.metric("Available Languages", support.get('language_count', 0))
+                            
+                            st.markdown("---")
+                            st.subheader("Available Languages")
+                            languages = support.get('available_languages', [])
+                            for lang in languages:
+                                st.write(f"- **{lang.get('language_name', lang.get('language', 'Unknown'))}** ({lang.get('language', 'N/A')})")
+                                if lang.get('is_auto_generated'):
+                                    st.caption("Auto-generated")
+                            
+                            st.markdown("---")
+                            st.subheader("Recommendations")
+                            for rec in support.get('recommendations', []):
+                                st.write(f"- {rec}")
+                    
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+
+elif is_page("engagement_booster"):
+    st.title("🎯 Engagement Booster")
+    st.markdown("Suggest polls, cards, and end screens to boost engagement")
+    
+    render_channel_niche_inputs()
+    
+    video_id_input = st.text_input(
+        "Video ID or URL",
+        placeholder="Enter YouTube video ID or full URL"
+    )
+    
+    if video_id_input:
+        import re
+        video_id = video_id_input
+        if "youtube.com" in video_id or "youtu.be" in video_id:
+            video_id_match = re.search(r'(?:v=|\/)([0-9A-Za-z_-]{11}).*', video_id)
+            if video_id_match:
+                video_id = video_id_match.group(1)
+        
+        if st.button("🎯 Get Engagement Suggestions", use_container_width=True, type="primary"):
+            with st.spinner("Analyzing engagement opportunities..."):
+                try:
+                    suggestions = st.session_state.engagement_booster.suggest_engagement_elements(video_id)
+                    
+                    if "error" in suggestions:
+                        st.error(f"Error: {suggestions['error']}")
+                    else:
+                        st.metric("Engagement Score", f"{suggestions.get('engagement_score', 0)}/100")
+                        st.write(f"**Video Duration:** {suggestions.get('video_duration_seconds', 0)} seconds")
+                        
+                        st.markdown("---")
+                        
+                        tabs = st.tabs(["Polls", "Cards", "End Screens", "Priority Actions"])
+                        
+                        with tabs[0]:
+                            st.subheader("📊 Poll Suggestions")
+                            poll_suggestions = suggestions.get('suggestions', {}).get('polls', [])
+                            for i, poll in enumerate(poll_suggestions, 1):
+                                if poll.get('recommendation'):
+                                    st.info(poll['recommendation'])
+                                else:
+                                    with st.expander(f"Poll #{i}: {poll.get('question', 'Question')}"):
+                                        st.write(f"**Timing:** {poll.get('timing_seconds', 0)}s ({poll.get('timing_percentage', 0)}%)")
+                                        st.write(f"**Reason:** {poll.get('reason', 'N/A')}")
+                                        st.write(f"**Priority:** {poll.get('priority', 'medium')}")
+                                        st.write("**Options:**")
+                                        for option in poll.get('options', []):
+                                            st.write(f"- {option}")
+                        
+                        with tabs[1]:
+                            st.subheader("🎴 Card Suggestions")
+                            card_suggestions = suggestions.get('suggestions', {}).get('cards', [])
+                            for i, card in enumerate(card_suggestions, 1):
+                                if card.get('recommendation'):
+                                    st.info(card['recommendation'])
+                                else:
+                                    with st.expander(f"Card #{i}: {card.get('title', 'Card')}"):
+                                        st.write(f"**Type:** {card.get('type', 'N/A')}")
+                                        st.write(f"**Timing:** {card.get('timing_seconds', 0)}s ({card.get('timing_percentage', 0)}%)")
+                                        st.write(f"**Reason:** {card.get('reason', 'N/A')}")
+                                        st.write(f"**Priority:** {card.get('priority', 'medium')}")
+                                        if card.get('best_practices'):
+                                            st.write("**Best Practices:**")
+                                            for practice in card['best_practices']:
+                                                st.write(f"- {practice}")
+                        
+                        with tabs[2]:
+                            st.subheader("📺 End Screen Suggestions")
+                            end_screen_suggestions = suggestions.get('suggestions', {}).get('end_screens', [])
+                            for i, end_screen in enumerate(end_screen_suggestions, 1):
+                                with st.expander(f"End Screen #{i}: {end_screen.get('title', 'Element')}"):
+                                    st.write(f"**Type:** {end_screen.get('type', 'N/A')}")
+                                    st.write(f"**Timing:** {end_screen.get('timing_seconds', 0)}s")
+                                    st.write(f"**Duration:** {end_screen.get('duration_seconds', 0)}s")
+                                    st.write(f"**Position:** {end_screen.get('position', 'N/A')}")
+                                    st.write(f"**Reason:** {end_screen.get('reason', 'N/A')}")
+                                    st.write(f"**Priority:** {end_screen.get('priority', 'medium')}")
+                                    if end_screen.get('best_practices'):
+                                        st.write("**Best Practices:**")
+                                        for practice in end_screen['best_practices']:
+                                            st.write(f"- {practice}")
+                        
+                        with tabs[3]:
+                            st.subheader("🎯 Priority Actions")
+                            priority_actions = suggestions.get('priority_actions', [])
+                            for action in priority_actions:
+                                with st.expander(f"{action.get('action', 'Action')} - {action.get('priority', 'medium').upper()} Priority"):
+                                    st.write(f"**Impact:** {action.get('impact', 'medium')}")
+                                    st.write(f"**Reason:** {action.get('reason', 'N/A')}")
+                                    st.write(f"**Quick Start:** {action.get('quick_start', 'N/A')}")
+                        
+                        st.markdown("---")
+                        st.subheader("📚 Best Practices")
+                        best_practices = suggestions.get('best_practices', {})
+                        for category, practices in best_practices.items():
+                            with st.expander(f"{category.title()}"):
+                                for practice in practices:
+                                    st.write(f"- {practice}")
+                
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+elif is_page("thumbnail_enhancer"):
+    st.title("🖼️ Thumbnail Enhancer")
+    st.markdown("Analyze and improve your video thumbnails for better CTR")
+    
+    render_channel_niche_inputs()
+    
+    video_id_input = st.text_input(
+        "Video ID or URL",
+        placeholder="Enter YouTube video ID or full URL"
+    )
+    
+    if video_id_input:
+        import re
+        video_id = video_id_input
+        if "youtube.com" in video_id or "youtu.be" in video_id:
+            video_id_match = re.search(r'(?:v=|\/)([0-9A-Za-z_-]{11}).*', video_id)
+            if video_id_match:
+                video_id = video_id_match.group(1)
+        
+        tab1, tab2, tab3 = st.tabs(["Analyze", "Improvements", "A/B Tests"])
+        
+        with tab1:
+            if st.button("🔍 Analyze Thumbnail", use_container_width=True, type="primary"):
+                with st.spinner("Analyzing thumbnail..."):
+                    try:
+                        analysis = st.session_state.thumbnail_enhancer.analyze_thumbnail(video_id)
+                        
+                        if "error" in analysis:
+                            st.error(f"Error: {analysis['error']}")
+                        else:
+                            ctr_potential = analysis.get('ctr_potential', {})
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("CTR Score", f"{ctr_potential.get('score', 0)}/100",
+                                         ctr_potential.get('grade', 'N/A'))
+                            with col2:
+                                st.metric("CTR Estimate", ctr_potential.get('ctr_estimate', 'N/A'))
+                            with col3:
+                                st.metric("Improvement Potential", 
+                                         f"+{ctr_potential.get('improvement_potential', 0)} points")
+                            
+                            if analysis.get('thumbnail_url'):
+                                st.image(analysis['thumbnail_url'], caption="Current Thumbnail", width=400)
+                            
+                            st.markdown("---")
+                            st.subheader("Analysis Details")
+                            analysis_details = analysis.get('analysis', {})
+                            st.write(f"**Resolution:** {analysis_details.get('resolution', 'N/A')}")
+                            st.write(f"**Has Text Overlay:** {'Yes' if analysis_details.get('has_text_overlay') else 'No'}")
+                            st.write(f"**Title Relevance:** {'Yes' if analysis_details.get('title_relevance') else 'No'}")
+                            
+                            st.markdown("---")
+                            st.subheader("Recommendations")
+                            recommendations = analysis.get('recommendations', [])
+                            for rec in recommendations:
+                                with st.expander(f"{rec.get('category', 'General').title()} - {rec.get('priority', 'medium').upper()} Priority"):
+                                    st.write(f"**Issue:** {rec.get('issue', 'N/A')}")
+                                    st.write(f"**Recommendation:** {rec.get('recommendation', 'N/A')}")
+                                    st.write(f"**Impact:** {rec.get('impact', 'medium')}")
+                                    if rec.get('tips'):
+                                        st.write("**Tips:**")
+                                        for tip in rec['tips']:
+                                            st.write(f"- {tip}")
+                    
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+        
+        with tab2:
+            if st.button("✨ Get Improvement Suggestions", use_container_width=True, type="primary"):
+                with st.spinner("Generating improvement suggestions..."):
+                    try:
+                        improvements = st.session_state.thumbnail_enhancer.suggest_thumbnail_improvements(video_id)
+                        
+                        if "error" in improvements:
+                            st.error(f"Error: {improvements['error']}")
+                        else:
+                            current_ctr = improvements.get('current_ctr_potential', {})
+                            st.metric("Current CTR Score", f"{current_ctr.get('score', 0)}/100")
+                            
+                            estimated = improvements.get('estimated_total_improvement', {})
+                            st.metric("Potential CTR Score", f"{estimated.get('potential_new_score', 0)}/100",
+                                     f"Grade: {estimated.get('grade_improvement', 'N/A')}")
+                            
+                            st.markdown("---")
+                            st.subheader("Improvement Suggestions")
+                            improvement_list = improvements.get('improvements', [])
+                            for improvement in improvement_list:
+                                with st.expander(f"{improvement.get('improvement', 'Improvement')} - {improvement.get('priority', 'medium').upper()} Priority"):
+                                    st.write(f"**Description:** {improvement.get('description', 'N/A')}")
+                                    st.write(f"**Expected Impact:** {improvement.get('expected_impact', 'N/A')}")
+                                    st.write("**Implementation Steps:**")
+                                    for step in improvement.get('implementation', []):
+                                        st.write(f"- {step}")
+                            
+                            st.markdown("---")
+                            st.subheader("Next Steps")
+                            for step in improvements.get('next_steps', []):
+                                st.write(f"✅ {step}")
+                    
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+        
+        with tab3:
+            if st.button("🧪 Get A/B Test Suggestions", use_container_width=True, type="primary"):
+                with st.spinner("Generating A/B test suggestions..."):
+                    try:
+                        analysis = st.session_state.thumbnail_enhancer.analyze_thumbnail(video_id)
+                        
+                        if "error" in analysis:
+                            st.error(f"Error: {analysis['error']}")
+                        else:
+                            ab_tests = analysis.get('ab_test_suggestions', [])
+                            st.subheader("A/B Test Suggestions")
+                            
+                            for test in ab_tests:
+                                with st.expander(f"{test.get('test_name', 'Test')} - {test.get('priority', 'medium').upper()} Priority"):
+                                    st.write(f"**Variation A:** {test.get('variation_a', 'N/A')}")
+                                    st.write(f"**Variation B:** {test.get('variation_b', 'N/A')}")
+                                    st.write(f"**Hypothesis:** {test.get('hypothesis', 'N/A')}")
+                                    st.write(f"**Metric:** {test.get('metric', 'N/A')}")
+                                    st.write(f"**Duration:** {test.get('duration', 'N/A')}")
+                            
+                            st.markdown("---")
+                            st.subheader("Best Practices")
+                            best_practices = analysis.get('best_practices', {})
+                            for category, practices in best_practices.items():
+                                with st.expander(f"{category.title()}"):
+                                    for practice in practices:
+                                        st.write(f"- {practice}")
+                    
+                    except Exception as e:
+                        st.error(f"Error: {e}")
 
 # Footer
 st.markdown("---")

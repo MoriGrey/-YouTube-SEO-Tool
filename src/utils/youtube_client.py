@@ -10,6 +10,22 @@ from googleapiclient.errors import HttpError
 from dotenv import load_dotenv
 from diskcache import Cache
 import time
+import logging
+
+# Initialize logger (lazy import to avoid circular dependency)
+_logger = None
+
+def _get_logger():
+    """Get logger instance (lazy import)."""
+    global _logger
+    if _logger is None:
+        try:
+            from src.utils.logger import get_logger
+            _logger = get_logger("youtube_client")
+        except Exception:
+            # Fallback to standard logging if custom logger not available
+            _logger = logging.getLogger("youtube_client")
+    return _logger
 
 # Load environment variables
 load_dotenv()
@@ -56,22 +72,67 @@ class YouTubeClient:
             time.sleep(min_interval - elapsed)
         self._last_request_time = time.time()
     
-    def _cached_request(self, cache_key: str, request_func, expire: int = None):
-        """Execute request with caching."""
+    def _cached_request(self, cache_key: str, request_func, expire: int = None, endpoint: str = "unknown", quota_cost: int = 1):
+        """Execute request with caching, rate limiting and logging."""
         expire = expire or self.CACHE_EXPIRE
+        logger = _get_logger()
         
         # Check cache first
         cached = self._cache.get(cache_key)
         if cached is not None:
+            logger.api_usage("youtube", endpoint, "cached", cache_hit=True, quota_cost=0)
             return cached
+        
+        # Check application-level rate limit (DDoS protection)
+        try:
+            from src.utils.rate_limiter import check_rate_limit
+            allowed, error_msg = check_rate_limit("youtube_api")
+            if not allowed:
+                logger.warning(f"Rate limit exceeded for YouTube API: {error_msg}")
+                raise YouTubeAPIError(f"Rate limit exceeded: {error_msg}")
+        except ImportError:
+            # Rate limiter not available, skip check
+            pass
         
         # Rate limit and execute
         self._rate_limit()
+        start_time = time.time()
         try:
             result = request_func()
+            response_time = time.time() - start_time
+            
+            # Update quota usage
+            self._quota_used += quota_cost
+            
             self._cache.set(cache_key, result, expire=expire)
+            
+            # Log successful API usage
+            logger.api_usage(
+                "youtube",
+                endpoint,
+                "success",
+                response_time_ms=round(response_time * 1000, 2),
+                cache_hit=False,
+                quota_cost=quota_cost,
+                quota_used=self._quota_used
+            )
+            
             return result
         except HttpError as e:
+            response_time = time.time() - start_time
+            error_code = e.resp.status if hasattr(e, 'resp') else None
+            
+            # Log API error
+            logger.api_usage(
+                "youtube",
+                endpoint,
+                "error",
+                error_code=error_code,
+                error_message=str(e)[:100],  # Truncate long error messages
+                response_time_ms=round(response_time * 1000, 2)
+            )
+            logger.error(f"YouTube API error: {e}", endpoint=endpoint, error_code=error_code)
+            
             raise YouTubeAPIError(f"YouTube API Error: {e}")
     
     def get_channel_by_handle(self, handle: str) -> Dict[str, Any]:
@@ -97,7 +158,7 @@ class YouTubeClient:
             ).execute()
             return response
         
-        return self._cached_request(cache_key, request)
+        return self._cached_request(cache_key, request, endpoint="channels.list", quota_cost=1)
     
     def get_channel_by_id(self, channel_id: str) -> Dict[str, Any]:
         """
@@ -114,7 +175,7 @@ class YouTubeClient:
             ).execute()
             return response
         
-        return self._cached_request(cache_key, request)
+        return self._cached_request(cache_key, request, endpoint="channels.list", quota_cost=1)
     
     def get_channel_videos(self, channel_id: str, max_results: int = 50) -> List[Dict[str, Any]]:
         """

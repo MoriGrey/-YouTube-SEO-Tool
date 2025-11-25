@@ -176,14 +176,20 @@ class ViralPredictor:
         # Check for trending keywords in niche
         all_text = f"{title} {description} {' '.join(tags)}".lower()
         
-        # Trending keywords for the niche
-        trending_keywords = [
-            "psychedelic", "anatolian", "turkish rock", "70s", "vintage",
-            "cover", "ai", "artificial intelligence", "folk", "traditional"
-        ]
+        # Generate trending keywords from niche
+        niche_words = niche.lower().split()
+        trending_keywords = niche_words.copy()
+        
+        # Add common trending words that work across niches
+        common_trending = ["cover", "mix", "remix", "new", "latest", "2024", "2025", "viral", "trending"]
+        trending_keywords.extend(common_trending)
+        
+        # If niche is too short, add some fallback keywords
+        if len(trending_keywords) < 5:
+            trending_keywords.extend(["music", "song", "video", "audio"])
         
         found_trending = sum(1 for keyword in trending_keywords if keyword in all_text)
-        score = min(found_trending / len(trending_keywords), 1.0) * 0.8
+        score = min(found_trending / max(len(trending_keywords), 1), 1.0) * 0.8
         
         # Check for numbers/years (often viral)
         if any(char.isdigit() for char in title):

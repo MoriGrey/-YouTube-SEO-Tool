@@ -28,7 +28,8 @@ class TitleOptimizer:
         self,
         base_title: str,
         song_name: Optional[str] = None,
-        num_variations: int = 5
+        num_variations: int = 5,
+        niche: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         Generate multiple title variations for A/B testing.
@@ -37,14 +38,18 @@ class TitleOptimizer:
             base_title: Original or base title
             song_name: Name of the song (if applicable)
             num_variations: Number of variations to generate
+            niche: Content niche (e.g., "oriental techno music", "psychedelic anatolian rock")
         
         Returns:
             List of title variations with SEO scores
         """
         variations = []
         
-        # Extract keywords from base title
-        keywords = self._extract_keywords(base_title)
+        # Use provided niche or default
+        niche = niche or "psychedelic anatolian rock"
+        
+        # Extract keywords from base title and niche
+        keywords = self._extract_keywords(base_title, niche)
         
         # Generate different title structures
         structures = [
@@ -57,7 +62,7 @@ class TitleOptimizer:
         
         for i in range(num_variations):
             structure_func = random.choice(structures)
-            variation = structure_func(song_name or base_title, keywords)
+            variation = structure_func(song_name or base_title, keywords, niche)
             
             # Analyze SEO
             seo_analysis = self.keyword_researcher.analyze_title_seo(variation)
@@ -75,63 +80,116 @@ class TitleOptimizer:
         variations.sort(key=lambda x: x["seo_score"], reverse=True)
         return variations
     
-    def _extract_keywords(self, title: str) -> List[str]:
-        """Extract relevant keywords from title."""
-        keywords = []
-        base_keywords = [
-            "psychedelic", "anatolian", "rock", "turkish", "70s", "cover",
-            "türkü", "folk", "music", "song"
-        ]
+    def _extract_keywords(self, title: str, niche: str = "") -> List[str]:
+        """
+        Extract relevant keywords from title and niche.
         
+        Args:
+            title: Video title
+            niche: Content niche (e.g., "oriental techno music")
+        
+        Returns:
+            List of extracted keywords
+        """
+        keywords = []
+        
+        # Extract keywords from niche (split by space and filter meaningful words)
+        niche_keywords = []
+        if niche:
+            # Split niche into words and capitalize appropriately
+            niche_words = niche.lower().split()
+            # Filter out common stop words
+            stop_words = {"the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by"}
+            niche_keywords = [word for word in niche_words if word not in stop_words and len(word) > 2]
+        
+        # Also check title for keywords
         title_lower = title.lower()
-        for keyword in base_keywords:
+        
+        # Combine niche keywords and check if they appear in title
+        all_keywords = niche_keywords + ["music", "song", "cover", "70s", "80s", "90s"]
+        
+        for keyword in all_keywords:
             if keyword in title_lower:
                 keywords.append(keyword)
         
+        # If no keywords found from title, use niche keywords
+        if not keywords and niche_keywords:
+            keywords = niche_keywords[:3]  # Take first 3 keywords from niche
+        
         return keywords
     
-    def _structure_simple(self, song_name: str, keywords: List[str]) -> str:
+    def _structure_simple(self, song_name: str, keywords: List[str], niche: str = "") -> str:
         """Simple structure: Song Name | Keywords"""
-        if "psychedelic" not in " ".join(keywords).lower():
-            keywords.insert(0, "Psychedelic")
-        if "anatolian" not in " ".join(keywords).lower():
-            keywords.insert(1, "Anatolian")
-        if "rock" not in " ".join(keywords).lower():
-            keywords.append("Rock")
+        # Use niche keywords if available
+        if niche:
+            niche_words = niche.split()
+            # Capitalize niche words properly
+            niche_title = " ".join(word.capitalize() for word in niche_words[:3])
+            title = f"{song_name} | {niche_title}"
+        else:
+            # Fallback to keywords if no niche
+            if keywords:
+                keywords_capitalized = [kw.capitalize() for kw in keywords[:3]]
+                title = f"{song_name} | {' '.join(keywords_capitalized)}"
+            else:
+                title = song_name
         
-        title = f"{song_name} | {' '.join(keywords[:3])}"
         return title[:60]  # Keep under 60 chars
     
-    def _structure_with_pipe(self, song_name: str, keywords: List[str]) -> str:
+    def _structure_with_pipe(self, song_name: str, keywords: List[str], niche: str = "") -> str:
         """Structure with pipe: Song | Genre | Year"""
-        genre = "Psychedelic Anatolian Rock"
+        if niche:
+            # Capitalize niche properly
+            genre = " ".join(word.capitalize() for word in niche.split())
+        else:
+            genre = "Psychedelic Anatolian Rock"  # Default fallback
+        
         year = "70s"
         title = f"{song_name} | {genre} | {year}"
         return title[:60]
     
-    def _structure_with_brackets(self, song_name: str, keywords: List[str]) -> str:
+    def _structure_with_brackets(self, song_name: str, keywords: List[str], niche: str = "") -> str:
         """Structure with brackets: Song [Genre]"""
-        genre = "Psychedelic Anatolian Rock"
+        if niche:
+            # Capitalize niche properly
+            genre = " ".join(word.capitalize() for word in niche.split())
+        else:
+            genre = "Psychedelic Anatolian Rock"  # Default fallback
+        
         title = f"{song_name} [{genre}]"
         return title[:60]
     
-    def _structure_question(self, song_name: str, keywords: List[str]) -> str:
+    def _structure_question(self, song_name: str, keywords: List[str], niche: str = "") -> str:
         """Question structure: Have You Heard Song? | Genre"""
-        genre = "Psychedelic Anatolian Rock"
+        if niche:
+            # Capitalize niche properly
+            genre = " ".join(word.capitalize() for word in niche.split())
+        else:
+            genre = "Psychedelic Anatolian Rock"  # Default fallback
+        
         title = f"{song_name} | {genre} Cover"
         return title[:60]
     
-    def _structure_emotional(self, song_name: str, keywords: List[str]) -> str:
+    def _structure_emotional(self, song_name: str, keywords: List[str], niche: str = "") -> str:
         """Emotional structure: Amazing Song | Genre"""
-        genre = "Psychedelic Anatolian Rock"
+        if niche:
+            # Capitalize niche properly
+            genre = " ".join(word.capitalize() for word in niche.split())
+        else:
+            genre = "Psychedelic Anatolian Rock"  # Default fallback
+        
         emotional_words = ["Amazing", "Incredible", "Beautiful", "Epic"]
         emotional = random.choice(emotional_words)
         title = f"{emotional} {song_name} | {genre}"
         return title[:60]
     
-    def optimize_existing_title(self, title: str) -> Dict[str, Any]:
+    def optimize_existing_title(self, title: str, niche: Optional[str] = None) -> Dict[str, Any]:
         """
         Optimize an existing title.
+        
+        Args:
+            title: Original title
+            niche: Content niche (optional)
         
         Returns:
             Optimization suggestions and improved version
@@ -139,8 +197,9 @@ class TitleOptimizer:
         analysis = self.keyword_researcher.analyze_title_seo(title)
         
         # Generate optimized version
-        keywords = self._extract_keywords(title)
-        optimized = self._structure_with_pipe(title, keywords)
+        niche = niche or "psychedelic anatolian rock"
+        keywords = self._extract_keywords(title, niche)
+        optimized = self._structure_with_pipe(title, keywords, niche)
         
         optimized_analysis = self.keyword_researcher.analyze_title_seo(optimized)
         

@@ -313,6 +313,284 @@ class CompetitorAnalyzer:
             )
         }
     
+    def analyze_gaps(
+        self,
+        your_channel_handle: str,
+        competitor_handles: List[str],
+        max_videos_per_channel: int = 10
+    ) -> Dict[str, Any]:
+        """
+        Perform detailed gap analysis between your channel and competitors.
+        
+        Args:
+            your_channel_handle: Your channel handle
+            competitor_handles: List of competitor channel handles
+            max_videos_per_channel: Maximum videos to analyze per channel
+            
+        Returns:
+            Detailed gap analysis with content, keyword, timing, tag, and description gaps
+        """
+        gaps = {
+            "content_gaps": [],
+            "keyword_gaps": [],
+            "timing_gaps": {},
+            "tag_gaps": [],
+            "description_gaps": {},
+            "thumbnail_gaps": {},
+            "opportunities": []
+        }
+        
+        try:
+            # Get your channel data
+            your_channel_data = self.client.get_channel_by_handle(your_channel_handle)
+            if not your_channel_data.get("items"):
+                return {"error": f"Channel @{your_channel_handle} not found"}
+            
+            your_channel_id = your_channel_data["items"][0]["id"]
+            your_analysis = self.analyze_competitor(your_channel_id)
+            your_videos = self.client.get_channel_videos(your_channel_id, max_results=max_videos_per_channel)
+            
+            # Analyze competitors
+            competitor_data = []
+            all_competitor_keywords = set()
+            all_competitor_tags = set()
+            competitor_upload_times = []
+            competitor_descriptions = []
+            
+            for competitor_handle in competitor_handles:
+                try:
+                    comp_data = self.client.get_channel_by_handle(competitor_handle)
+                    if comp_data.get("items"):
+                        comp_id = comp_data["items"][0]["id"]
+                        comp_analysis = self.analyze_competitor(comp_id)
+                        comp_videos = self.client.get_channel_videos(comp_id, max_results=max_videos_per_channel)
+                        
+                        competitor_data.append({
+                            "handle": competitor_handle,
+                            "analysis": comp_analysis,
+                            "videos": comp_videos
+                        })
+                        
+                        # Extract keywords from competitor videos
+                        for video in comp_videos:
+                            title = video.get("snippet", {}).get("title", "")
+                            description = video.get("snippet", {}).get("description", "")
+                            tags = video.get("snippet", {}).get("tags", [])
+                            
+                            # Extract keywords from title and description
+                            title_words = [w.lower() for w in title.split() if len(w) > 4]
+                            desc_words = [w.lower() for w in description.split()[:100] if len(w) > 4]
+                            all_competitor_keywords.update(title_words + desc_words)
+                            
+                            # Collect tags
+                            all_competitor_tags.update([t.lower() for t in tags])
+                            
+                            # Collect upload times
+                            published = video.get("snippet", {}).get("publishedAt", "")
+                            if published:
+                                try:
+                                    from datetime import datetime
+                                    pub_date = datetime.fromisoformat(published.replace('Z', '+00:00'))
+                                    competitor_upload_times.append(pub_date.hour)
+                                except:
+                                    pass
+                            
+                            # Collect description patterns
+                            if description:
+                                desc_length = len(description)
+                                desc_word_count = len(description.split())
+                                competitor_descriptions.append({
+                                    "length": desc_length,
+                                    "word_count": desc_word_count,
+                                    "has_links": "http" in description.lower(),
+                                    "hashtag_count": description.count("#")
+                                })
+                except Exception as e:
+                    continue
+            
+            # Analyze your channel
+            your_keywords = set()
+            your_tags = set()
+            your_upload_times = []
+            your_descriptions = []
+            
+            for video in your_videos:
+                title = video.get("snippet", {}).get("title", "")
+                description = video.get("snippet", {}).get("description", "")
+                tags = video.get("snippet", {}).get("tags", [])
+                
+                title_words = [w.lower() for w in title.split() if len(w) > 4]
+                desc_words = [w.lower() for w in description.split()[:100] if len(w) > 4]
+                your_keywords.update(title_words + desc_words)
+                your_tags.update([t.lower() for t in tags])
+                
+                published = video.get("snippet", {}).get("publishedAt", "")
+                if published:
+                    try:
+                        from datetime import datetime
+                        pub_date = datetime.fromisoformat(published.replace('Z', '+00:00'))
+                        your_upload_times.append(pub_date.hour)
+                    except:
+                        pass
+                
+                if description:
+                    desc_length = len(description)
+                    desc_word_count = len(description.split())
+                    your_descriptions.append({
+                        "length": desc_length,
+                        "word_count": desc_word_count,
+                        "has_links": "http" in description.lower(),
+                        "hashtag_count": description.count("#")
+                    })
+            
+            # Content Gaps: Keywords competitors use but you don't
+            missing_keywords = all_competitor_keywords - your_keywords
+            gaps["keyword_gaps"] = sorted(list(missing_keywords))[:20]  # Top 20 missing keywords
+            
+            # Tag Gaps: Tags competitors use but you don't
+            missing_tags = all_competitor_tags - your_tags
+            gaps["tag_gaps"] = sorted(list(missing_tags))[:30]  # Top 30 missing tags
+            
+            # Timing Gaps: Upload time patterns
+            if competitor_upload_times and your_upload_times:
+                from collections import Counter
+                comp_time_dist = Counter(competitor_upload_times)
+                your_time_dist = Counter(your_upload_times)
+                
+                # Find most common competitor upload times
+                most_common_comp_times = comp_time_dist.most_common(3)
+                gaps["timing_gaps"] = {
+                    "competitor_peak_hours": [hour for hour, count in most_common_comp_times],
+                    "your_peak_hours": [hour for hour, count in your_time_dist.most_common(3)],
+                    "recommendation": "Consider uploading at competitor peak hours if different"
+                }
+            
+            # Description Gaps
+            if competitor_descriptions and your_descriptions:
+                avg_comp_length = sum(d["length"] for d in competitor_descriptions) / len(competitor_descriptions)
+                avg_your_length = sum(d["length"] for d in your_descriptions) / len(your_descriptions)
+                
+                avg_comp_words = sum(d["word_count"] for d in competitor_descriptions) / len(competitor_descriptions)
+                avg_your_words = sum(d["word_count"] for d in your_descriptions) / len(your_descriptions)
+                
+                comp_has_links = sum(1 for d in competitor_descriptions if d["has_links"]) / len(competitor_descriptions)
+                your_has_links = sum(1 for d in your_descriptions if d["has_links"]) / len(your_descriptions)
+                
+                avg_comp_hashtags = sum(d["hashtag_count"] for d in competitor_descriptions) / len(competitor_descriptions)
+                avg_your_hashtags = sum(d["hashtag_count"] for d in your_descriptions) / len(your_descriptions)
+                
+                gaps["description_gaps"] = {
+                    "length_gap": avg_comp_length - avg_your_length,
+                    "word_count_gap": avg_comp_words - avg_your_words,
+                    "links_usage_gap": comp_has_links - your_has_links,
+                    "hashtag_gap": avg_comp_hashtags - avg_your_hashtags,
+                    "recommendations": []
+                }
+                
+                if avg_your_length < avg_comp_length * 0.8:
+                    gaps["description_gaps"]["recommendations"].append(
+                        f"Expand descriptions - competitors average {int(avg_comp_length)} chars, you average {int(avg_your_length)}"
+                    )
+                if avg_your_words < avg_comp_words * 0.8:
+                    gaps["description_gaps"]["recommendations"].append(
+                        f"Increase word count - competitors average {int(avg_comp_words)} words, you average {int(avg_your_words)}"
+                    )
+                if your_has_links < comp_has_links * 0.8:
+                    gaps["description_gaps"]["recommendations"].append(
+                        "Add more links to descriptions (channel, playlists, social media)"
+                    )
+                if avg_your_hashtags < avg_comp_hashtags * 0.8:
+                    gaps["description_gaps"]["recommendations"].append(
+                        f"Increase hashtags - competitors average {int(avg_comp_hashtags)}, you average {int(avg_your_hashtags)}"
+                    )
+            
+            # Content Gaps: Title patterns
+            competitor_title_patterns = []
+            your_title_patterns = []
+            
+            for comp in competitor_data:
+                for video in comp.get("videos", []):
+                    title = video.get("snippet", {}).get("title", "")
+                    if title:
+                        competitor_title_patterns.append({
+                            "length": len(title),
+                            "has_pipe": "|" in title,
+                            "has_brackets": "[" in title or "]" in title,
+                            "has_question": "?" in title,
+                            "has_numbers": any(c.isdigit() for c in title)
+                        })
+            
+            for video in your_videos:
+                title = video.get("snippet", {}).get("title", "")
+                if title:
+                    your_title_patterns.append({
+                        "length": len(title),
+                        "has_pipe": "|" in title,
+                        "has_brackets": "[" in title or "]" in title,
+                        "has_question": "?" in title,
+                        "has_numbers": any(c.isdigit() for c in title)
+                    })
+            
+            if competitor_title_patterns and your_title_patterns:
+                comp_avg_length = sum(t["length"] for t in competitor_title_patterns) / len(competitor_title_patterns)
+                your_avg_length = sum(t["length"] for t in your_title_patterns) / len(your_title_patterns)
+                
+                comp_pipe_usage = sum(1 for t in competitor_title_patterns if t["has_pipe"]) / len(competitor_title_patterns)
+                your_pipe_usage = sum(1 for t in your_title_patterns if t["has_pipe"]) / len(your_title_patterns)
+                
+                gaps["content_gaps"].append({
+                    "type": "title_length",
+                    "gap": comp_avg_length - your_avg_length,
+                    "recommendation": f"Consider longer titles - competitors average {int(comp_avg_length)} chars"
+                })
+                
+                if comp_pipe_usage > your_pipe_usage * 1.2:
+                    gaps["content_gaps"].append({
+                        "type": "title_formatting",
+                        "gap": "Competitors use pipe (|) separator more frequently",
+                        "recommendation": "Consider using pipe separator in titles: 'Title | Category | Year'"
+                    })
+            
+            # Generate Opportunities
+            opportunities = []
+            
+            # Keyword opportunities
+            if gaps["keyword_gaps"]:
+                opportunities.append({
+                    "type": "keyword",
+                    "priority": "high",
+                    "title": "Missing Keywords",
+                    "description": f"Competitors use {len(gaps['keyword_gaps'])} keywords you don't",
+                    "action": f"Consider adding these keywords: {', '.join(gaps['keyword_gaps'][:5])}"
+                })
+            
+            # Tag opportunities
+            if gaps["tag_gaps"]:
+                opportunities.append({
+                    "type": "tag",
+                    "priority": "high",
+                    "title": "Missing Tags",
+                    "description": f"Competitors use {len(gaps['tag_gaps'])} tags you don't",
+                    "action": f"Consider adding these tags: {', '.join(gaps['tag_gaps'][:10])}"
+                })
+            
+            # Timing opportunities
+            if gaps["timing_gaps"].get("competitor_peak_hours"):
+                opportunities.append({
+                    "type": "timing",
+                    "priority": "medium",
+                    "title": "Upload Timing",
+                    "description": "Competitors upload at different times",
+                    "action": f"Consider uploading at hours: {', '.join(map(str, gaps['timing_gaps']['competitor_peak_hours']))}"
+                })
+            
+            gaps["opportunities"] = opportunities
+            
+            return gaps
+            
+        except Exception as e:
+            return {"error": f"Gap analysis failed: {str(e)}"}
+    
     def _generate_comparison_recommendations(
         self,
         your_subs: int,

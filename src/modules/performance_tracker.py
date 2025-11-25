@@ -432,4 +432,449 @@ class PerformanceTracker:
             "learned_patterns": learned_patterns,
             "recommendations": growth_trend.get("recommendations", [])
         }
+    
+    def forecast_performance(
+        self,
+        channel_handle: str,
+        days_ahead: int = 30,
+        scenarios: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Forecast future performance based on historical data.
+        
+        Args:
+            channel_handle: Channel to forecast
+            days_ahead: Number of days to forecast (7, 30, 90, 180, 365)
+            scenarios: Optional list of scenarios to analyze (e.g., ["optimistic", "realistic", "pessimistic"])
+            
+        Returns:
+            Performance forecast with projections
+        """
+        history = self._load_history()
+        snapshots = history.get("snapshots", [])
+        
+        # Filter snapshots for this channel
+        relevant_snapshots = [
+            s for s in snapshots
+            if s.get("channel_handle") == channel_handle
+        ]
+        
+        if len(relevant_snapshots) < 2:
+            return {
+                "error": "Insufficient data",
+                "message": "Need at least 2 snapshots to forecast. Take more snapshots first.",
+                "snapshots_count": len(relevant_snapshots)
+            }
+        
+        # Sort by timestamp
+        relevant_snapshots.sort(key=lambda x: x["timestamp"])
+        
+        # Get current metrics
+        current = relevant_snapshots[-1]
+        current_metrics = current["metrics"]
+        
+        # Calculate growth rates from historical data
+        growth_rates = self._calculate_growth_rates(relevant_snapshots)
+        
+        # Default scenarios if not provided
+        if not scenarios:
+            scenarios = ["realistic", "optimistic", "pessimistic"]
+        
+        # Generate forecasts for each scenario
+        forecasts = {}
+        for scenario in scenarios:
+            forecasts[scenario] = self._generate_scenario_forecast(
+                current_metrics,
+                growth_rates,
+                days_ahead,
+                scenario
+            )
+        
+        # Calculate confidence intervals
+        confidence = self._calculate_forecast_confidence(relevant_snapshots, growth_rates)
+        
+        # Generate recommendations based on forecast
+        recommendations = self._generate_forecast_recommendations(forecasts, growth_rates)
+        
+        return {
+            "timestamp": datetime.now().isoformat(),
+            "channel_handle": channel_handle,
+            "forecast_period": {
+                "days_ahead": days_ahead,
+                "forecast_date": (datetime.now() + timedelta(days=days_ahead)).isoformat()
+            },
+            "current_metrics": current_metrics,
+            "historical_growth_rates": growth_rates,
+            "scenarios": forecasts,
+            "confidence": confidence,
+            "recommendations": recommendations
+        }
+    
+    def _calculate_growth_rates(self, snapshots: List[Dict[str, Any]]) -> Dict[str, float]:
+        """Calculate average growth rates from snapshots."""
+        if len(snapshots) < 2:
+            return {
+                "subscriber_daily": 0.0,
+                "view_daily": 0.0,
+                "subscriber_weekly": 0.0,
+                "view_weekly": 0.0
+            }
+        
+        # Calculate daily growth rates
+        subscriber_changes = []
+        view_changes = []
+        day_diffs = []
+        
+        for i in range(1, len(snapshots)):
+            prev = snapshots[i-1]
+            curr = snapshots[i]
+            
+            sub_change = curr["metrics"]["subscribers"] - prev["metrics"]["subscribers"]
+            view_change = curr["metrics"]["total_views"] - prev["metrics"]["total_views"]
+            
+            prev_date = datetime.fromisoformat(prev["timestamp"])
+            curr_date = datetime.fromisoformat(curr["timestamp"])
+            days_diff = (curr_date - prev_date).days
+            
+            if days_diff > 0:
+                subscriber_changes.append(sub_change / days_diff)
+                view_changes.append(view_change / days_diff)
+                day_diffs.append(days_diff)
+        
+        avg_sub_daily = sum(subscriber_changes) / len(subscriber_changes) if subscriber_changes else 0.0
+        avg_view_daily = sum(view_changes) / len(view_changes) if view_changes else 0.0
+        
+        return {
+            "subscriber_daily": avg_sub_daily,
+            "view_daily": avg_view_daily,
+            "subscriber_weekly": avg_sub_daily * 7,
+            "view_weekly": avg_view_daily * 7
+        }
+    
+    def _generate_scenario_forecast(
+        self,
+        current_metrics: Dict[str, Any],
+        growth_rates: Dict[str, float],
+        days_ahead: int,
+        scenario: str
+    ) -> Dict[str, Any]:
+        """Generate forecast for a specific scenario."""
+        # Scenario multipliers
+        multipliers = {
+            "optimistic": 1.5,  # 50% better than average
+            "realistic": 1.0,  # Average growth
+            "pessimistic": 0.5  # 50% worse than average
+        }
+        
+        multiplier = multipliers.get(scenario, 1.0)
+        
+        # Project subscribers
+        daily_sub_growth = growth_rates["subscriber_daily"] * multiplier
+        projected_subscribers = current_metrics["subscribers"] + (daily_sub_growth * days_ahead)
+        
+        # Project views
+        daily_view_growth = growth_rates["view_daily"] * multiplier
+        projected_views = current_metrics["total_views"] + (daily_view_growth * days_ahead)
+        
+        # Project videos (assume same upload frequency)
+        current_videos = current_metrics.get("total_videos", 0)
+        avg_views_per_video = current_metrics.get("average_views_per_video", 0)
+        
+        # Estimate new videos based on historical upload rate
+        # If we have historical data, use it; otherwise estimate conservatively
+        estimated_new_videos = max(int(days_ahead / 7), 1)  # Assume at least 1 video per week
+        
+        projected_videos = current_videos + estimated_new_videos
+        projected_avg_views = projected_views / max(projected_videos, 1)
+        
+        # Calculate conversion rate projection
+        projected_conversion_rate = (projected_subscribers / max(projected_views, 1)) * 100
+        
+        # Calculate days to 1M subscribers
+        if daily_sub_growth > 0:
+            days_to_1m = max(0, (1_000_000 - projected_subscribers) / daily_sub_growth)
+            projected_1m_date = (datetime.now() + timedelta(days=days_ahead + days_to_1m)).isoformat()
+        else:
+            days_to_1m = None
+            projected_1m_date = None
+        
+        return {
+            "subscribers": {
+                "current": current_metrics["subscribers"],
+                "projected": int(projected_subscribers),
+                "change": int(projected_subscribers - current_metrics["subscribers"]),
+                "daily_growth": daily_sub_growth
+            },
+            "views": {
+                "current": current_metrics["total_views"],
+                "projected": int(projected_views),
+                "change": int(projected_views - current_metrics["total_views"]),
+                "daily_growth": daily_view_growth
+            },
+            "videos": {
+                "current": current_videos,
+                "projected": projected_videos,
+                "new_videos": estimated_new_videos
+            },
+            "metrics": {
+                "projected_avg_views_per_video": int(projected_avg_views),
+                "projected_conversion_rate": projected_conversion_rate
+            },
+            "milestone": {
+                "days_to_1m": days_to_1m,
+                "projected_1m_date": projected_1m_date
+            }
+        }
+    
+    def _calculate_forecast_confidence(
+        self,
+        snapshots: List[Dict[str, Any]],
+        growth_rates: Dict[str, float]
+    ) -> Dict[str, Any]:
+        """Calculate confidence level for forecast."""
+        if len(snapshots) < 3:
+            return {
+                "level": "low",
+                "score": 30,
+                "reason": "Insufficient historical data (need at least 3 snapshots)"
+            }
+        
+        # More snapshots = higher confidence
+        snapshot_count = len(snapshots)
+        if snapshot_count >= 10:
+            base_confidence = 80
+        elif snapshot_count >= 5:
+            base_confidence = 60
+        else:
+            base_confidence = 40
+        
+        # Check data consistency
+        growth_consistency = self._check_growth_consistency(snapshots)
+        
+        # Adjust confidence based on consistency
+        if growth_consistency > 0.7:
+            confidence_score = base_confidence + 10
+        elif growth_consistency > 0.5:
+            confidence_score = base_confidence
+        else:
+            confidence_score = base_confidence - 10
+        
+        confidence_score = max(10, min(90, confidence_score))  # Clamp between 10-90
+        
+        if confidence_score >= 70:
+            level = "high"
+        elif confidence_score >= 50:
+            level = "medium"
+        else:
+            level = "low"
+        
+        return {
+            "level": level,
+            "score": confidence_score,
+            "snapshot_count": snapshot_count,
+            "growth_consistency": growth_consistency
+        }
+    
+    def _check_growth_consistency(self, snapshots: List[Dict[str, Any]]) -> float:
+        """Check how consistent growth rates are (0-1, higher = more consistent)."""
+        if len(snapshots) < 3:
+            return 0.5
+        
+        subscriber_values = [s["metrics"]["subscribers"] for s in snapshots]
+        
+        # Calculate coefficient of variation (std/mean)
+        if len(subscriber_values) > 1:
+            mean = sum(subscriber_values) / len(subscriber_values)
+            if mean > 0:
+                variance = sum((x - mean) ** 2 for x in subscriber_values) / len(subscriber_values)
+                std = variance ** 0.5
+                cv = std / mean
+                # Lower CV = more consistent
+                consistency = max(0, 1 - min(cv, 1))
+                return consistency
+        
+        return 0.5
+    
+    def _generate_forecast_recommendations(
+        self,
+        forecasts: Dict[str, Any],
+        growth_rates: Dict[str, float]
+    ) -> List[str]:
+        """Generate recommendations based on forecast."""
+        recommendations = []
+        
+        realistic = forecasts.get("realistic", {})
+        optimistic = forecasts.get("optimistic", {})
+        
+        if realistic:
+            realistic_subs = realistic.get("subscribers", {}).get("projected", 0)
+            current_subs = realistic.get("subscribers", {}).get("current", 0)
+            
+            # Check if growth is positive
+            if realistic_subs > current_subs:
+                growth_percent = ((realistic_subs - current_subs) / max(current_subs, 1)) * 100
+                if growth_percent < 5:
+                    recommendations.append("Forecast shows slow growth. Consider increasing upload frequency or improving content quality.")
+                elif growth_percent > 20:
+                    recommendations.append("Forecast shows strong growth potential. Maintain consistency and scale successful strategies.")
+            
+            # Check days to 1M
+            days_to_1m = realistic.get("milestone", {}).get("days_to_1m")
+            if days_to_1m and days_to_1m > 365 * 5:  # More than 5 years
+                recommendations.append("At current growth rate, reaching 1M subscribers will take more than 5 years. Consider aggressive growth strategies.")
+            elif days_to_1m and days_to_1m < 365:  # Less than 1 year
+                recommendations.append("Excellent forecast! At current growth rate, you could reach 1M subscribers within a year. Maintain momentum!")
+        
+        # Compare scenarios
+        if optimistic and realistic:
+            opt_subs = optimistic.get("subscribers", {}).get("projected", 0)
+            real_subs = realistic.get("subscribers", {}).get("projected", 0)
+            
+            if opt_subs > real_subs * 1.3:
+                recommendations.append("Optimistic scenario shows 30%+ better growth. Focus on implementing best practices to achieve optimistic forecast.")
+        
+        # Daily growth recommendations
+        daily_growth = growth_rates.get("subscriber_daily", 0)
+        if daily_growth < 1:
+            recommendations.append("Daily subscriber growth is below 1. Focus on improving video discoverability and engagement.")
+        elif daily_growth > 10:
+            recommendations.append("Strong daily growth! Continue current strategies and consider scaling successful content patterns.")
+        
+        return recommendations
+    
+    def analyze_scenario_impact(
+        self,
+        channel_handle: str,
+        strategy_changes: Dict[str, Any],
+        days_ahead: int = 30
+    ) -> Dict[str, Any]:
+        """
+        Analyze impact of different strategy changes on future performance.
+        
+        Args:
+            channel_handle: Channel to analyze
+            strategy_changes: Dictionary of strategy changes (e.g., {"upload_frequency": 2, "ctr_improvement": 0.1})
+            days_ahead: Number of days to project
+            
+        Returns:
+            Impact analysis comparing baseline vs. strategy changes
+        """
+        # Get baseline forecast
+        baseline_forecast = self.forecast_performance(channel_handle, days_ahead, ["realistic"])
+        baseline = baseline_forecast.get("scenarios", {}).get("realistic", {})
+        
+        if baseline_forecast.get("error"):
+            return baseline_forecast
+        
+        # Get current metrics and growth rates
+        history = self._load_history()
+        snapshots = [
+            s for s in history.get("snapshots", [])
+            if s.get("channel_handle") == channel_handle
+        ]
+        snapshots.sort(key=lambda x: x["timestamp"])
+        
+        if not snapshots:
+            return {"error": "No historical data available"}
+        
+        current_metrics = snapshots[-1]["metrics"]
+        growth_rates = self._calculate_growth_rates(snapshots)
+        
+        # Apply strategy changes
+        modified_growth_rates = growth_rates.copy()
+        
+        # Upload frequency impact
+        if "upload_frequency" in strategy_changes:
+            freq_multiplier = strategy_changes["upload_frequency"] / 1.0  # Assume baseline is 1 video/week
+            modified_growth_rates["subscriber_daily"] *= (1 + (freq_multiplier - 1) * 0.3)  # 30% impact
+            modified_growth_rates["view_daily"] *= freq_multiplier
+        
+        # CTR improvement impact
+        if "ctr_improvement" in strategy_changes:
+            ctr_boost = strategy_changes["ctr_improvement"]  # e.g., 0.1 = 10% improvement
+            modified_growth_rates["view_daily"] *= (1 + ctr_boost)
+            modified_growth_rates["subscriber_daily"] *= (1 + ctr_boost * 0.5)  # 50% of CTR impact on subs
+        
+        # Engagement improvement impact
+        if "engagement_improvement" in strategy_changes:
+            eng_boost = strategy_changes["engagement_improvement"]
+            modified_growth_rates["subscriber_daily"] *= (1 + eng_boost * 0.4)  # 40% impact on subs
+        
+        # SEO optimization impact
+        if "seo_optimization" in strategy_changes:
+            seo_boost = strategy_changes["seo_optimization"]
+            modified_growth_rates["view_daily"] *= (1 + seo_boost * 0.3)
+            modified_growth_rates["subscriber_daily"] *= (1 + seo_boost * 0.2)
+        
+        # Generate modified forecast
+        modified_forecast = self._generate_scenario_forecast(
+            current_metrics,
+            modified_growth_rates,
+            days_ahead,
+            "realistic"
+        )
+        
+        # Calculate impact
+        baseline_subs = baseline.get("subscribers", {}).get("projected", 0)
+        modified_subs = modified_forecast.get("subscribers", {}).get("projected", 0)
+        subscriber_impact = modified_subs - baseline_subs
+        subscriber_impact_percent = (subscriber_impact / max(baseline_subs, 1)) * 100
+        
+        baseline_views = baseline.get("views", {}).get("projected", 0)
+        modified_views = modified_forecast.get("views", {}).get("projected", 0)
+        view_impact = modified_views - baseline_views
+        view_impact_percent = (view_impact / max(baseline_views, 1)) * 100
+        
+        return {
+            "timestamp": datetime.now().isoformat(),
+            "channel_handle": channel_handle,
+            "strategy_changes": strategy_changes,
+            "forecast_period_days": days_ahead,
+            "baseline": baseline,
+            "modified": modified_forecast,
+            "impact": {
+                "subscribers": {
+                    "baseline": baseline_subs,
+                    "modified": modified_subs,
+                    "change": subscriber_impact,
+                    "change_percent": subscriber_impact_percent
+                },
+                "views": {
+                    "baseline": baseline_views,
+                    "modified": modified_views,
+                    "change": view_impact,
+                    "change_percent": view_impact_percent
+                }
+            },
+            "recommendations": self._generate_strategy_recommendations(
+                strategy_changes,
+                subscriber_impact_percent,
+                view_impact_percent
+            )
+        }
+    
+    def _generate_strategy_recommendations(
+        self,
+        strategy_changes: Dict[str, Any],
+        sub_impact: float,
+        view_impact: float
+    ) -> List[str]:
+        """Generate recommendations based on strategy impact."""
+        recommendations = []
+        
+        if sub_impact > 10:
+            recommendations.append(f"Strategy changes show strong positive impact (+{sub_impact:.1f}% subscribers). Consider implementing these changes.")
+        elif sub_impact < -5:
+            recommendations.append(f"Strategy changes show negative impact ({sub_impact:.1f}% subscribers). Review and adjust approach.")
+        
+        if "upload_frequency" in strategy_changes:
+            freq = strategy_changes["upload_frequency"]
+            if freq > 2:
+                recommendations.append(f"Increasing upload frequency to {freq} videos/week could significantly boost growth. Ensure quality is maintained.")
+        
+        if "ctr_improvement" in strategy_changes:
+            ctr = strategy_changes["ctr_improvement"]
+            recommendations.append(f"Improving CTR by {ctr*100:.0f}% through better thumbnails and titles could increase views by {view_impact:.0f}%.")
+        
+        return recommendations
 
