@@ -137,15 +137,13 @@ class TitleOptimizer:
         return title[:60]  # Keep under 60 chars
     
     def _structure_with_pipe(self, song_name: str, keywords: List[str], niche: str = "") -> str:
-        """Structure with pipe: Song | Genre | Year"""
+        """Structure with pipe: Song | Genre"""
         if niche:
             # Capitalize niche properly
             genre = " ".join(word.capitalize() for word in niche.split())
+            title = f"{song_name} | {genre}"
         else:
-            genre = "Music"  # Generic fallback
-        
-        year = "70s"
-        title = f"{song_name} | {genre} | {year}"
+            title = f"{song_name}"
         return title[:60]
     
     def _structure_with_brackets(self, song_name: str, keywords: List[str], niche: str = "") -> str:
