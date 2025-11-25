@@ -4201,7 +4201,13 @@ elif is_page("caption_optimizer"):
                         analysis = st.session_state.caption_optimizer.analyze_captions(video_id, keywords)
                         
                         if "error" in analysis:
-                            st.error(f"Error: {analysis['error']}")
+                            st.error(f"❌ **Error:** {analysis['error']}")
+                            if "recommendation" in analysis:
+                                st.info(f"💡 **Recommendation:** {analysis['recommendation']}")
+                            if "download_error" in analysis:
+                                st.warning(f"⚠️ **Technical Details:** {analysis['download_error']}")
+                            if "available_languages" in analysis:
+                                st.info(f"📝 **Available Languages:** {', '.join(analysis['available_languages'])}")
                         else:
                             col1, col2, col3 = st.columns(3)
                             with col1:

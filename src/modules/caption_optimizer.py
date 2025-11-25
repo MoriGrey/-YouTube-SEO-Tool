@@ -83,6 +83,8 @@ class CaptionOptimizer:
             is_auto_generated = track["snippet"].get("trackKind") == "ASR"
             
             # Download caption content
+            transcript = None
+            download_error = None
             try:
                 # Note: captions().download() returns bytes, not a dict
                 # We need to use http request directly or parse bytes
@@ -105,9 +107,39 @@ class CaptionOptimizer:
                 # Parse SRT content
                 transcript = self._parse_srt(caption_content)
             except Exception as e:
-                # If download fails, return metadata only
+                # If download fails, store error for better messaging
+                download_error = str(e)
                 transcript = None
-                error_msg = str(e)
+                
+                # Check if it's a permission issue
+                if "403" in download_error or "Forbidden" in download_error:
+                    return {
+                        "error": "Cannot download captions - permission denied",
+                        "video_id": video_id,
+                        "language": track_language,
+                        "is_auto_generated": is_auto_generated,
+                        "recommendation": "The video owner may have restricted caption downloads, or you may need additional permissions. Try using auto-generated captions if available."
+                    }
+                elif "404" in download_error or "Not Found" in download_error:
+                    return {
+                        "error": "Caption track not found or no longer available",
+                        "video_id": video_id,
+                        "language": track_language,
+                        "recommendation": "The caption track may have been removed. Try checking if captions are enabled for this video."
+                    }
+            
+            # If transcript is None, return helpful error message
+            if transcript is None:
+                error_msg = download_error or "Unknown error"
+                return {
+                    "error": "No transcript available",
+                    "video_id": video_id,
+                    "language": track_language,
+                    "is_auto_generated": is_auto_generated,
+                    "track_id": track_id,
+                    "download_error": error_msg,
+                    "recommendation": f"Failed to download captions: {error_msg}. This may be due to: 1) Caption track restrictions, 2) API permissions, 3) Caption format issues. Try checking if the video has captions enabled in YouTube Studio."
+                }
             
             return {
                 "video_id": video_id,
