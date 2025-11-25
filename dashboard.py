@@ -505,12 +505,131 @@ def render_channel_niche_inputs():
 with st.sidebar:
     st.title(t("app.title"))
     
-    # User Info & Logout
+    # User Info
     if auth_manager.is_authenticated():
         user_name = auth_manager.get_user_name()
         username = auth_manager.get_username()
         st.markdown(f"**👤 User:** {user_name or username}")
         st.markdown("---")
+    
+    # Navigation with Primary and Secondary Panels (ÜSTTE)
+    # Primary Panels (Top Section)
+    primary_pages = [
+        t("navigation.dashboard"),
+        t("navigation.channel_analysis"),
+        t("navigation.keyword_research"),
+        t("navigation.competitor_analysis"),
+        t("navigation.title_optimizer"),
+        t("navigation.description_generator"),
+        t("navigation.tag_suggester"),
+        t("navigation.trend_predictor"),
+        t("navigation.viral_predictor"),
+        t("navigation.proactive_advisor")
+    ]
+    
+    # Secondary Panels (Bottom Section)
+    secondary_pages = [
+        t("navigation.performance_tracking"),
+        t("navigation.milestone_tracker"),
+        t("navigation.feedback_learning"),
+        t("navigation.competitor_benchmark"),
+        t("navigation.multi_source_data"),
+        t("navigation.knowledge_graph"),
+        t("navigation.continuous_learning"),
+        t("navigation.code_self_improvement"),
+        t("navigation.safety_ethics"),
+        "🔍 Video SEO Audit",
+        "📝 Caption Optimizer",
+        "🎯 Engagement Booster",
+        "🖼️ Thumbnail Enhancer"
+    ]
+    
+    # Combine all pages: primary first, then secondary
+    all_pages = primary_pages + secondary_pages
+    
+    # Initialize current page if not exists
+    if "current_page" not in st.session_state:
+        st.session_state.current_page = t("navigation.dashboard")
+    
+    # Display navigation with visual grouping
+    st.markdown("### 🎯 Öncelikli Paneller")
+    st.caption("Ana kontrol panelleri ve temel özellikler")
+    
+    # Primary panel selectbox
+    primary_index = 0
+    if st.session_state.current_page in primary_pages:
+        primary_index = primary_pages.index(st.session_state.current_page)
+    
+    selected_primary = st.selectbox(
+        "Ana Paneller",
+        primary_pages,
+        index=primary_index,
+        key="primary_nav_select",
+        label_visibility="collapsed"
+    )
+    
+    st.markdown("---")
+    st.markdown("### 📊 İkincil Paneller")
+    st.caption("Gelişmiş analiz ve optimizasyon araçları")
+    
+    # Secondary panel selectbox
+    secondary_index = 0
+    if st.session_state.current_page in secondary_pages:
+        secondary_index = secondary_pages.index(st.session_state.current_page)
+    
+    selected_secondary = st.selectbox(
+        "İkincil Paneller",
+        secondary_pages,
+        index=secondary_index,
+        key="secondary_nav_select",
+        label_visibility="collapsed"
+    )
+    
+    # Determine which page is selected
+    # Track previous selections to detect changes
+    if "prev_primary" not in st.session_state:
+        st.session_state.prev_primary = selected_primary
+    if "prev_secondary" not in st.session_state:
+        st.session_state.prev_secondary = selected_secondary
+    
+    # If primary changed, use primary; if secondary changed, use secondary
+    if selected_primary != st.session_state.prev_primary:
+        page = selected_primary
+        st.session_state.current_page = selected_primary
+    elif selected_secondary != st.session_state.prev_secondary:
+        page = selected_secondary
+        st.session_state.current_page = selected_secondary
+    else:
+        # Use current page from session state
+        page = st.session_state.current_page
+    
+    # Update previous values
+    st.session_state.prev_primary = selected_primary
+    st.session_state.prev_secondary = selected_secondary
+    
+    # ALTTA: Dil Seçimi, API Key, Target Channel/Niche, Rate Limit, Logout
+    st.markdown("---")
+    st.markdown("---")
+    
+    # Language selector
+    st.markdown("### 🌐 Dil Seçimi")
+    lang_options = {
+        "Türkçe": "tr",
+        "English": "en"
+    }
+    current_lang = get_language()
+    selected_lang_display = "Türkçe" if current_lang == "tr" else "English"
+    selected_lang = st.selectbox(
+        t("app.language_selector"),
+        options=list(lang_options.keys()),
+        index=0 if current_lang == "tr" else 1,
+        label_visibility="collapsed"
+    )
+    if lang_options[selected_lang] != current_lang:
+        set_language(lang_options[selected_lang])
+        st.rerun()
+    
+    st.markdown("---")
     
     # API Key Management (Multi-user support)
     st.markdown("### 🔑 API Key")
@@ -589,127 +708,8 @@ with st.sidebar:
                 st.error("Please enter an API key")
     
     st.markdown("---")
-    
-    # Language selector
-    lang_options = {
-        "Türkçe": "tr",
-        "English": "en"
-    }
-    current_lang = get_language()
-    selected_lang_display = "Türkçe" if current_lang == "tr" else "English"
-    selected_lang = st.selectbox(
-        t("app.language_selector"),
-        options=list(lang_options.keys()),
-        index=0 if current_lang == "tr" else 1
-    )
-    if lang_options[selected_lang] != current_lang:
-        set_language(lang_options[selected_lang])
-        st.rerun()
-    
-    st.markdown("---")
     st.markdown(f"**{t('common.target_channel')}:** @{st.session_state.target_channel}")
     st.markdown(f"**{t('common.niche')}:** {st.session_state.target_niche.title()}")
-    st.markdown("---")
-    
-    # Navigation with Primary and Secondary Panels
-    # Primary Panels (Top Section)
-    primary_pages = [
-        t("navigation.dashboard"),
-        t("navigation.channel_analysis"),
-        t("navigation.keyword_research"),
-        t("navigation.competitor_analysis"),
-        t("navigation.title_optimizer"),
-        t("navigation.description_generator"),
-        t("navigation.tag_suggester"),
-        t("navigation.trend_predictor"),
-        t("navigation.viral_predictor"),
-        t("navigation.proactive_advisor")
-    ]
-    
-    # Secondary Panels (Bottom Section)
-    secondary_pages = [
-        t("navigation.performance_tracking"),
-        t("navigation.milestone_tracker"),
-        t("navigation.feedback_learning"),
-        t("navigation.competitor_benchmark"),
-        t("navigation.multi_source_data"),
-        t("navigation.knowledge_graph"),
-        t("navigation.continuous_learning"),
-        t("navigation.code_self_improvement"),
-        t("navigation.safety_ethics"),
-        "🔍 Video SEO Audit",
-        "📝 Caption Optimizer",
-        "🎯 Engagement Booster",
-        "🖼️ Thumbnail Enhancer"
-    ]
-    
-    # Combine all pages: primary first, then secondary
-    all_pages = primary_pages + secondary_pages
-    
-    # Initialize current page if not exists
-    if "current_page" not in st.session_state:
-        st.session_state.current_page = t("navigation.dashboard")
-    
-    # Find current index
-    current_index = 0
-    if st.session_state.current_page in all_pages:
-        current_index = all_pages.index(st.session_state.current_page)
-    
-    # Display navigation with visual grouping
-    st.markdown("### 🎯 Öncelikli Paneller")
-    st.caption("Ana kontrol panelleri ve temel özellikler")
-    
-    # Primary panel selectbox
-    primary_index = 0
-    if st.session_state.current_page in primary_pages:
-        primary_index = primary_pages.index(st.session_state.current_page)
-    
-    selected_primary = st.selectbox(
-        "Ana Paneller",
-        primary_pages,
-        index=primary_index,
-        key="primary_nav_select",
-        label_visibility="collapsed"
-    )
-    
-    st.markdown("---")
-    st.markdown("### 📊 İkincil Paneller")
-    st.caption("Gelişmiş analiz ve optimizasyon araçları")
-    
-    # Secondary panel selectbox
-    secondary_index = 0
-    if st.session_state.current_page in secondary_pages:
-        secondary_index = secondary_pages.index(st.session_state.current_page)
-    
-    selected_secondary = st.selectbox(
-        "İkincil Paneller",
-        secondary_pages,
-        index=secondary_index,
-        key="secondary_nav_select",
-        label_visibility="collapsed"
-    )
-    
-    # Determine which page is selected
-    # Track previous selections to detect changes
-    if "prev_primary" not in st.session_state:
-        st.session_state.prev_primary = selected_primary
-    if "prev_secondary" not in st.session_state:
-        st.session_state.prev_secondary = selected_secondary
-    
-    # If primary changed, use primary; if secondary changed, use secondary
-    if selected_primary != st.session_state.prev_primary:
-        page = selected_primary
-        st.session_state.current_page = selected_primary
-    elif selected_secondary != st.session_state.prev_secondary:
-        page = selected_secondary
-        st.session_state.current_page = selected_secondary
-    else:
-        # Use current page from session state
-        page = st.session_state.current_page
-    
-    # Update previous values
-    st.session_state.prev_primary = selected_primary
-    st.session_state.prev_secondary = selected_secondary
     
     # Rate Limit Status
     if auth_manager.is_authenticated():
