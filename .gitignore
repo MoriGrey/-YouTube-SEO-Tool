@@ -71,3 +71,12 @@ htmlcov/
 
 # Authentication config (contains password hashes)
 config/auth_config.yaml
+
+# Internal documentation and deployment guides (not for public)
+.cursor/scratchpad.md
+DEPLOY_WEB.md
+DEPLOY_NEW_VERSION.md
+PUSH_MANUALLY.md
+TEST_DASHBOARD.md
+AUTH_SETUP.md
+SECURITY_AUDIT.md
