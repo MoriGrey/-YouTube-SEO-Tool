@@ -410,11 +410,11 @@ if st.session_state.api_key_configured and "client" not in st.session_state:
         st.error(f"Error initializing: {e}")
         st.stop()
 
-# Initialize target channel and niche if not set
+# Initialize target channel and niche if not set (empty by default)
 if "target_channel" not in st.session_state:
-    st.session_state.target_channel = "anatolianturkishrock"
+    st.session_state.target_channel = ""
 if "target_niche" not in st.session_state:
-    st.session_state.target_niche = "psychedelic anatolian rock"
+    st.session_state.target_niche = ""
 if "language" not in st.session_state:
     st.session_state.language = "tr"  # Default to Turkish
 
@@ -473,7 +473,8 @@ def render_channel_niche_inputs():
     with col1:
         channel = st.text_input(
             t("forms.target_channel"), 
-            value=st.session_state.get("target_channel", "anatolianturkishrock"),
+            value=st.session_state.get("target_channel", ""),
+            placeholder="Örn: mori_grey veya @mori_grey",
             key=f"channel_input_{st.session_state.get('page_counter', 0)}",
             help=t("forms.channel_help")
         )
@@ -483,11 +484,12 @@ def render_channel_niche_inputs():
             st.error(f"⚠️ {error_msg}")
             logger.warning(f"Invalid channel handle: {error_msg}", channel_input=channel[:20])
         else:
-            st.session_state.target_channel = channel.lstrip("@").strip()
+            st.session_state.target_channel = channel.lstrip("@").strip() if channel else ""
     with col2:
         niche = st.text_input(
             t("forms.niche"), 
-            value=st.session_state.get("target_niche", "psychedelic anatolian rock"),
+            value=st.session_state.get("target_niche", ""),
+            placeholder="Örn: Techno Music, Psychedelic Rock",
             key=f"niche_input_{st.session_state.get('page_counter', 0)}",
             help=t("forms.niche_help")
         )
@@ -498,7 +500,7 @@ def render_channel_niche_inputs():
             logger.warning(f"Invalid niche: {error_msg}", niche_input=niche[:50])
         else:
             # Sanitize niche
-            st.session_state.target_niche = sanitize_string(niche.strip(), max_length=200)
+            st.session_state.target_niche = sanitize_string(niche.strip(), max_length=200) if niche else ""
     st.markdown("---")
 
 # Sidebar
@@ -708,8 +710,10 @@ with st.sidebar:
                 st.error("Please enter an API key")
     
     st.markdown("---")
-    st.markdown(f"**{t('common.target_channel')}:** @{st.session_state.target_channel}")
-    st.markdown(f"**{t('common.niche')}:** {st.session_state.target_niche.title()}")
+    channel_display = f"@{st.session_state.target_channel}" if st.session_state.target_channel else "Henüz girilmedi"
+    niche_display = st.session_state.target_niche.title() if st.session_state.target_niche else "Henüz girilmedi"
+    st.markdown(f"**{t('common.target_channel')}:** {channel_display}")
+    st.markdown(f"**{t('common.niche')}:** {niche_display}")
     
     # Rate Limit Status
     if auth_manager.is_authenticated():
@@ -999,7 +1003,8 @@ elif is_page("keyword_research"):
     
     keywords_input = st.text_area(
         t("pages.keyword_research.enter_keywords"),
-        value=f"{st.session_state.target_niche}\nturkish rock music\nanadolu rock"
+        value="",
+        placeholder="Örn: techno music\nunderground electronic\nminimal techno\nher satıra bir anahtar kelime"
     )
     
     if st.button(t("pages.keyword_research.research_button"), use_container_width=True):
@@ -1058,7 +1063,8 @@ elif is_page("competitor_analysis"):
     
     keywords_input = st.text_area(
         t("pages.competitor_analysis.enter_keywords"),
-        value=f"{st.session_state.target_niche}\nturkish rock"
+        value="",
+        placeholder="Örn: techno music\nunderground electronic\nher satıra bir anahtar kelime"
     )
     
     if st.button(t("pages.competitor_analysis.find_button"), use_container_width=True):
@@ -1109,6 +1115,7 @@ elif is_page("competitor_analysis"):
     your_channel_handle_gap = st.text_input(
         "Your Channel Handle (e.g., anatolianturkishrock)",
         value=st.session_state.target_channel if st.session_state.target_channel else "",
+        placeholder="Örn: mori_grey veya @mori_grey",
         key="gap_your_channel"
     )
     
@@ -1226,8 +1233,8 @@ elif is_page("title_optimizer"):
     # Channel and Niche Inputs
     render_channel_niche_inputs()
     
-    title = st.text_input(t("pages.title_optimizer.enter_title"), value="GEL I 70's Psychedelic Turkish Rock")
-    song_name = st.text_input(t("pages.title_optimizer.song_name"), value="GEL")
+    title = st.text_input(t("pages.title_optimizer.enter_title"), value="", placeholder="Örn: Best Techno Mix 2024 | Underground Electronic Music")
+    song_name = st.text_input(t("pages.title_optimizer.song_name"), value="", placeholder="Örn: Song Name (opsiyonel)")
     
     if st.button(t("pages.title_optimizer.generate_button"), use_container_width=True):
         with st.spinner(t("messages.generating")):
@@ -1267,9 +1274,9 @@ elif is_page("description_generator"):
     # Channel and Niche Inputs
     render_channel_niche_inputs()
     
-    video_title = st.text_input(t("pages.description_generator.video_title"), value="GEL I 70's Psychedelic Turkish Rock")
-    song_name = st.text_input(t("pages.description_generator.song_name"), value="GEL")
-    custom_info = st.text_area(t("pages.description_generator.custom_info"))
+    video_title = st.text_input(t("pages.description_generator.video_title"), value="", placeholder="Örn: Best Techno Mix 2024 | Underground Electronic Music")
+    song_name = st.text_input(t("pages.description_generator.song_name"), value="", placeholder="Örn: Song Name (opsiyonel)")
+    custom_info = st.text_area(t("pages.description_generator.custom_info"), value="", placeholder="Örn: Bu video hakkında ek bilgiler (opsiyonel)")
     
     if st.button(t("pages.description_generator.generate_button"), use_container_width=True):
         with st.spinner(t("messages.generating")):
@@ -1337,8 +1344,8 @@ elif is_page("tag_suggester"):
     # Channel and Niche Inputs
     render_channel_niche_inputs()
     
-    video_title = st.text_input(t("pages.tag_suggester.video_title"), value="GEL I 70's Psychedelic Turkish Rock")
-    song_name = st.text_input(t("pages.tag_suggester.song_name"), value="GEL")
+    video_title = st.text_input(t("pages.tag_suggester.video_title"), value="", placeholder="Örn: Best Techno Mix 2024 | Underground Electronic Music")
+    song_name = st.text_input(t("pages.tag_suggester.song_name"), value="", placeholder="Örn: Song Name (opsiyonel)")
     
     if st.button(t("pages.tag_suggester.suggest_button"), use_container_width=True):
         with st.spinner(t("messages.generating")):
@@ -2316,11 +2323,11 @@ elif is_page("viral_predictor"):
     with tab1:
         st.subheader("Analyze Content for Viral Potential")
         
-        title = st.text_input("Video Title", value="GEL I 70's Psychedelic Turkish Rock")
-        description = st.text_area("Video Description", height=150)
-        tags_input = st.text_input("Tags (comma-separated)", value="psychedelic, anatolian rock, turkish rock, 70s")
-        song_name = st.text_input("Song Name (optional)", value="GEL")
-        niche = st.text_input("Niche", value=st.session_state.target_niche)
+        title = st.text_input("Video Title", value="", placeholder="Örn: Best Techno Mix 2024 | Underground Electronic Music")
+        description = st.text_area("Video Description", value="", placeholder="Örn: Video açıklamasını buraya girin...", height=150)
+        tags_input = st.text_input("Tags (comma-separated)", value="", placeholder="Örn: techno, electronic, underground, minimal")
+        song_name = st.text_input("Song Name (optional)", value="", placeholder="Örn: Song Name (opsiyonel)")
+        niche = st.text_input("Niche", value=st.session_state.target_niche if st.session_state.target_niche else "", placeholder="Örn: Techno Music, Psychedelic Rock")
         
         if st.button("Predict Viral Potential", use_container_width=True):
             with st.spinner("Analyzing viral potential..."):
@@ -2670,7 +2677,8 @@ elif is_page("multi_source_data"):
         
         keywords_input = st.text_area(
             "Keywords (one per line)",
-            value=f"{st.session_state.target_niche}\nturkish rock\nanadolu rock\n70s rock"
+            value="",
+            placeholder="Örn: techno music\nunderground electronic\nminimal techno\nher satıra bir anahtar kelime"
         )
         niche = st.text_input("Niche", value=st.session_state.target_niche)
         
@@ -2732,7 +2740,7 @@ elif is_page("multi_source_data"):
     with tab2:
         st.subheader("Google Trends Analysis")
         
-        keywords_input = st.text_input("Keywords (comma-separated)", value="psychedelic rock, anatolian rock, turkish rock")
+        keywords_input = st.text_input("Keywords (comma-separated)", value="", placeholder="Örn: techno music, electronic, underground, minimal")
         region = st.selectbox("Region", ["TR", "US", "GB", "DE", "FR"], index=0)
         timeframe = st.selectbox(
             "Timeframe",
@@ -2768,7 +2776,8 @@ elif is_page("multi_source_data"):
         
         subreddits_input = st.text_input(
             "Subreddits (comma-separated)",
-            value="turkishrock, psychedelicrock, music, listentothis"
+            value="",
+            placeholder="Örn: techno, electronicmusic, underground, minimaltechno"
         )
         limit = st.slider("Posts per subreddit", 5, 25, 10)
         
@@ -2812,7 +2821,7 @@ elif is_page("multi_source_data"):
     with tab4:
         st.subheader("Twitter/X Trends")
         
-        keywords_input = st.text_input("Keywords (comma-separated)", value="psychedelic rock, turkish rock")
+        keywords_input = st.text_input("Keywords (comma-separated)", value="", placeholder="Örn: techno music, electronic, underground, minimal")
         region = st.selectbox("Region", ["Turkey", "United States", "Global"], index=0)
         
         if st.button("Get Twitter Trends", use_container_width=True):
@@ -4145,7 +4154,8 @@ elif is_page("caption_optimizer"):
                 with st.spinner("Analyzing captions..."):
                     try:
                         keywords_input = st.text_input("Target Keywords (comma-separated)", 
-                                                       value="psychedelic, anatolian, rock, turkish, 70s")
+                                                       value="",
+                                                       placeholder="Örn: techno, electronic, underground, minimal")
                         keywords = [k.strip() for k in keywords_input.split(",")] if keywords_input else None
                         
                         analysis = st.session_state.caption_optimizer.analyze_captions(video_id, keywords)
@@ -4187,7 +4197,8 @@ elif is_page("caption_optimizer"):
                 with st.spinner("Generating optimization suggestions..."):
                     try:
                         keywords_input = st.text_input("Target Keywords (comma-separated)", 
-                                                       value="psychedelic, anatolian, rock, turkish, 70s",
+                                                       value="",
+                                                       placeholder="Örn: techno, electronic, underground, minimal",
                                                        key="optimize_keywords")
                         keywords = [k.strip() for k in keywords_input.split(",")] if keywords_input else None
                         
