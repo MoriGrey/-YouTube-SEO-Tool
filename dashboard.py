@@ -139,6 +139,123 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Dark Theme CSS
+st.markdown("""
+<style>
+    /* Dark Theme Global Styles */
+    .main .block-container {
+        background-color: #0e1117;
+        color: #fafafa;
+    }
+    
+    /* Card Styling for Dark Theme */
+    .card-wrapper {
+        border: 1px solid #3a3f4b !important;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin: 0.75rem 0;
+        background: #1e2229 !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        color: #fafafa;
+    }
+    
+    .card-title {
+        margin: 0 0 0.5rem 0;
+        color: #fafafa !important;
+        font-size: 1.2rem;
+        font-weight: 600;
+    }
+    
+    .card-subtitle {
+        color: #b0b0b0 !important;
+        font-size: 0.9rem;
+        margin: 0.3rem 0;
+    }
+    
+    .card-content {
+        color: #d0d0d0 !important;
+        line-height: 1.6;
+        margin-top: 0.5rem;
+    }
+    
+    /* Streamlit elements dark theme adjustments */
+    .stMarkdown {
+        color: #fafafa;
+    }
+    
+    .stTextInput > div > div > input {
+        background-color: #262730;
+        color: #fafafa;
+    }
+    
+    .stSelectbox > div > div > select {
+        background-color: #262730;
+        color: #fafafa;
+    }
+    
+    .stTextArea > div > div > textarea {
+        background-color: #262730;
+        color: #fafafa;
+    }
+    
+    /* Sidebar dark theme */
+    .css-1d391kg {
+        background-color: #0e1117;
+    }
+    
+    /* Metric colors for dark theme */
+    .metric-default {
+        color: #4a9eff !important;
+    }
+    
+    .metric-success {
+        color: #4caf50 !important;
+    }
+    
+    .metric-warning {
+        color: #ffc107 !important;
+    }
+    
+    .metric-error {
+        color: #f44336 !important;
+    }
+    
+    .metric-info {
+        color: #17a2b8 !important;
+    }
+    
+    /* Button styling for dark theme */
+    .stButton > button {
+        background-color: #262730;
+        color: #fafafa;
+        border: 1px solid #3a3f4b;
+    }
+    
+    .stButton > button:hover {
+        background-color: #3a3f4b;
+        border-color: #4a9eff;
+    }
+    
+    /* Dataframe styling */
+    .dataframe {
+        background-color: #1e2229;
+        color: #fafafa;
+    }
+    
+    /* Info, success, warning, error boxes */
+    .stAlert {
+        background-color: #1e2229;
+        border: 1px solid #3a3f4b;
+    }
+    
+    /* Code blocks */
+    .stCodeBlock {
+        background-color: #1e2229;
+        border: 1px solid #3a3f4b;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Initialize session state
 # CRITICAL: Initialize required keys for Streamlit-Authenticator BEFORE any usage
 # According to Streamlit docs: https://docs.streamlit.io/develop/concepts/architecture/session-state#initialization
@@ -306,51 +423,20 @@ def render_card(title, content, metric=None, icon="", color="default", subtitle=
     """Render a card component with title, content, and optional metric."""
     import html
     
+    # Dark theme color map
     color_map = {
-        "default": "#333",
-        "success": "#28a745",
+        "default": "#4a9eff",
+        "success": "#4caf50",
         "warning": "#ffc107",
-        "error": "#dc3545",
+        "error": "#f44336",
         "info": "#17a2b8"
     }
     metric_color = color_map.get(color, color_map["default"])
     
     # Use Streamlit container for better control
     with st.container():
-        # Card wrapper with CSS
+        # Card wrapper with dark theme CSS
         st.markdown(f"""
-        <style>
-        .card-wrapper {{
-            border: 1px solid #e0e0e0;
-            border-radius: 10px;
-            padding: 1.5rem;
-            margin: 0.75rem 0;
-            background: white;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }}
-        .card-title {{
-            margin: 0 0 0.5rem 0;
-            color: #333;
-            font-size: 1.2rem;
-            font-weight: 600;
-        }}
-        .card-subtitle {{
-            color: #666;
-            font-size: 0.9rem;
-            margin: 0.3rem 0;
-        }}
-        .card-metric {{
-            font-size: 2rem;
-            font-weight: bold;
-            color: {metric_color};
-            margin: 0.5rem 0;
-        }}
-        .card-content {{
-            color: #555;
-            line-height: 1.6;
-            margin-top: 0.5rem;
-        }}
-        </style>
         <div class="card-wrapper">
         """, unsafe_allow_html=True)
         
@@ -361,9 +447,9 @@ def render_card(title, content, metric=None, icon="", color="default", subtitle=
         if subtitle:
             st.caption(subtitle)
         
-        # Metric
+        # Metric with dark theme color
         if metric:
-            st.markdown(f'<div class="card-metric">{html.escape(str(metric))}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="card-metric" style="font-size: 2rem; font-weight: bold; color: {metric_color}; margin: 0.5rem 0;">{html.escape(str(metric))}</div>', unsafe_allow_html=True)
         
         # Content - render as markdown to handle HTML properly
         # Convert <br> to newlines and <b> to ** for markdown
@@ -525,34 +611,105 @@ with st.sidebar:
     st.markdown(f"**{t('common.niche')}:** {st.session_state.target_niche.title()}")
     st.markdown("---")
     
-    page = st.selectbox(
-        t("navigation.dashboard") if current_lang == "tr" else "Navigation",
-        [
-            t("navigation.dashboard"),
-            t("navigation.channel_analysis"),
-            t("navigation.keyword_research"),
-            t("navigation.competitor_analysis"),
-            t("navigation.title_optimizer"),
-            t("navigation.description_generator"),
-            t("navigation.tag_suggester"),
-            t("navigation.trend_predictor"),
-            t("navigation.proactive_advisor"),
-            t("navigation.performance_tracking"),
-            t("navigation.milestone_tracker"),
-            t("navigation.feedback_learning"),
-            t("navigation.viral_predictor"),
-            t("navigation.competitor_benchmark"),
-            t("navigation.multi_source_data"),
-            t("navigation.knowledge_graph"),
-            t("navigation.continuous_learning"),
-            t("navigation.code_self_improvement"),
-            t("navigation.safety_ethics"),
-            "🔍 Video SEO Audit",
-            "📝 Caption Optimizer",
-            "🎯 Engagement Booster",
-            "🖼️ Thumbnail Enhancer"
-        ]
+    # Navigation with Primary and Secondary Panels
+    # Primary Panels (Top Section)
+    primary_pages = [
+        t("navigation.dashboard"),
+        t("navigation.channel_analysis"),
+        t("navigation.keyword_research"),
+        t("navigation.competitor_analysis"),
+        t("navigation.title_optimizer"),
+        t("navigation.description_generator"),
+        t("navigation.tag_suggester"),
+        t("navigation.trend_predictor"),
+        t("navigation.viral_predictor"),
+        t("navigation.proactive_advisor")
+    ]
+    
+    # Secondary Panels (Bottom Section)
+    secondary_pages = [
+        t("navigation.performance_tracking"),
+        t("navigation.milestone_tracker"),
+        t("navigation.feedback_learning"),
+        t("navigation.competitor_benchmark"),
+        t("navigation.multi_source_data"),
+        t("navigation.knowledge_graph"),
+        t("navigation.continuous_learning"),
+        t("navigation.code_self_improvement"),
+        t("navigation.safety_ethics"),
+        "🔍 Video SEO Audit",
+        "📝 Caption Optimizer",
+        "🎯 Engagement Booster",
+        "🖼️ Thumbnail Enhancer"
+    ]
+    
+    # Combine all pages: primary first, then secondary
+    all_pages = primary_pages + secondary_pages
+    
+    # Initialize current page if not exists
+    if "current_page" not in st.session_state:
+        st.session_state.current_page = t("navigation.dashboard")
+    
+    # Find current index
+    current_index = 0
+    if st.session_state.current_page in all_pages:
+        current_index = all_pages.index(st.session_state.current_page)
+    
+    # Display navigation with visual grouping
+    st.markdown("### 🎯 Öncelikli Paneller")
+    st.caption("Ana kontrol panelleri ve temel özellikler")
+    
+    # Primary panel selectbox
+    primary_index = 0
+    if st.session_state.current_page in primary_pages:
+        primary_index = primary_pages.index(st.session_state.current_page)
+    
+    selected_primary = st.selectbox(
+        "Ana Paneller",
+        primary_pages,
+        index=primary_index,
+        key="primary_nav_select",
+        label_visibility="collapsed"
     )
+    
+    st.markdown("---")
+    st.markdown("### 📊 İkincil Paneller")
+    st.caption("Gelişmiş analiz ve optimizasyon araçları")
+    
+    # Secondary panel selectbox
+    secondary_index = 0
+    if st.session_state.current_page in secondary_pages:
+        secondary_index = secondary_pages.index(st.session_state.current_page)
+    
+    selected_secondary = st.selectbox(
+        "İkincil Paneller",
+        secondary_pages,
+        index=secondary_index,
+        key="secondary_nav_select",
+        label_visibility="collapsed"
+    )
+    
+    # Determine which page is selected
+    # Track previous selections to detect changes
+    if "prev_primary" not in st.session_state:
+        st.session_state.prev_primary = selected_primary
+    if "prev_secondary" not in st.session_state:
+        st.session_state.prev_secondary = selected_secondary
+    
+    # If primary changed, use primary; if secondary changed, use secondary
+    if selected_primary != st.session_state.prev_primary:
+        page = selected_primary
+        st.session_state.current_page = selected_primary
+    elif selected_secondary != st.session_state.prev_secondary:
+        page = selected_secondary
+        st.session_state.current_page = selected_secondary
+    else:
+        # Use current page from session state
+        page = st.session_state.current_page
+    
+    # Update previous values
+    st.session_state.prev_primary = selected_primary
+    st.session_state.prev_secondary = selected_secondary
     
     # Rate Limit Status
     if auth_manager.is_authenticated():
