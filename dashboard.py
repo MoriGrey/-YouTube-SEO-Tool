@@ -273,11 +273,11 @@ if '_streamlit_authenticator' not in st.session_state:
     # This key is used internally by Streamlit-Authenticator
     pass  # Will be initialized by authenticator itself
 
-# Initialize target channel and niche
+# Initialize target channel and niche (empty by default - user will fill in)
 if "target_channel" not in st.session_state:
-    st.session_state.target_channel = "anatolianturkishrock"
+    st.session_state.target_channel = ""
 if "target_niche" not in st.session_state:
-    st.session_state.target_niche = "psychedelic anatolian rock"
+    st.session_state.target_niche = ""
 
 # Log app initialization
 if "app_initialized" not in st.session_state:
@@ -466,41 +466,60 @@ def render_card(title, content, metric=None, icon="", color="default", subtitle=
         
         st.markdown("</div>", unsafe_allow_html=True)
 
+def update_channel_state():
+    """Callback to update channel in session state when input changes."""
+    channel = st.session_state.get("target_channel", "")
+    # Clean and validate
+    cleaned_channel = channel.lstrip("@").strip() if channel else ""
+    is_valid, _ = validate_channel_handle(cleaned_channel)
+    if is_valid or not cleaned_channel:
+        st.session_state.target_channel = cleaned_channel
+
+def update_niche_state():
+    """Callback to update niche in session state when input changes."""
+    niche = st.session_state.get("target_niche", "")
+    # Clean and validate
+    cleaned_niche = sanitize_string(niche.strip(), max_length=200) if niche else ""
+    is_valid, _ = validate_niche(cleaned_niche)
+    if is_valid or not cleaned_niche:
+        st.session_state.target_niche = cleaned_niche
+
 def render_channel_niche_inputs():
     """Render channel and niche input fields at the top of each page."""
     st.markdown("---")
     col1, col2 = st.columns(2)
     with col1:
+        # Use target_channel directly as key for automatic syncing
         channel = st.text_input(
             t("forms.target_channel"), 
             value=st.session_state.get("target_channel", ""),
             placeholder="Örn: mori_grey veya @mori_grey",
-            key=f"channel_input_{st.session_state.get('page_counter', 0)}",
-            help=t("forms.channel_help")
+            key="target_channel",  # Direct key sync with session state
+            help=t("forms.channel_help"),
+            on_change=update_channel_state  # Update session state immediately on change
         )
-        # Validate channel handle
-        is_valid, error_msg = validate_channel_handle(channel)
-        if not is_valid and channel:  # Only show error if user entered something
+        # Validate channel handle and show error if needed
+        channel_value = st.session_state.get("target_channel", "")
+        is_valid, error_msg = validate_channel_handle(channel_value)
+        if not is_valid and channel_value:  # Only show error if user entered something
             st.error(f"⚠️ {error_msg}")
-            logger.warning(f"Invalid channel handle: {error_msg}", channel_input=channel[:20])
-        else:
-            st.session_state.target_channel = channel.lstrip("@").strip() if channel else ""
+            logger.warning(f"Invalid channel handle: {error_msg}", channel_input=channel_value[:20])
     with col2:
+        # Use target_niche directly as key for automatic syncing
         niche = st.text_input(
             t("forms.niche"), 
             value=st.session_state.get("target_niche", ""),
             placeholder="Örn: Techno Music, Psychedelic Rock",
-            key=f"niche_input_{st.session_state.get('page_counter', 0)}",
-            help=t("forms.niche_help")
+            key="target_niche",  # Direct key sync with session state
+            help=t("forms.niche_help"),
+            on_change=update_niche_state  # Update session state immediately on change
         )
-        # Validate niche
-        is_valid, error_msg = validate_niche(niche)
-        if not is_valid and niche:  # Only show error if user entered something
+        # Validate niche and show error if needed
+        niche_value = st.session_state.get("target_niche", "")
+        is_valid, error_msg = validate_niche(niche_value)
+        if not is_valid and niche_value:  # Only show error if user entered something
             st.error(f"⚠️ {error_msg}")
-            logger.warning(f"Invalid niche: {error_msg}", niche_input=niche[:50])
-        else:
-            # Sanitize niche
-            st.session_state.target_niche = sanitize_string(niche.strip(), max_length=200) if niche else ""
+            logger.warning(f"Invalid niche: {error_msg}", niche_input=niche_value[:50])
     st.markdown("---")
 
 # Sidebar
@@ -1233,14 +1252,14 @@ elif is_page("title_optimizer"):
     # Channel and Niche Inputs
     render_channel_niche_inputs()
     
-    title = st.text_input(t("pages.title_optimizer.enter_title"), value="", placeholder="Örn: Best Techno Mix 2024 | Underground Electronic Music")
-    song_name = st.text_input(t("pages.title_optimizer.song_name"), value="", placeholder="Örn: Song Name (opsiyonel)")
+    title = st.text_input(t("pages.title_optimizer.enter_title"), value="", placeholder="Örn: Best Techno Mix 2024 | Underground Electronic Music", key="title_optimizer_title")
+    song_name = st.text_input(t("pages.title_optimizer.song_name"), value="", placeholder="Örn: Song Name (opsiyonel)", key="title_optimizer_song")
     
     if st.button(t("pages.title_optimizer.generate_button"), use_container_width=True):
         with st.spinner(t("messages.generating")):
             try:
                 # Get niche from session state
-                niche = st.session_state.get("target_niche", "psychedelic anatolian rock")
+                niche = st.session_state.get("target_niche", "")
                 variations = st.session_state.title_optimizer.generate_title_variations(
                     title, song_name, num_variations=5, niche=niche
                 )
@@ -1274,16 +1293,16 @@ elif is_page("description_generator"):
     # Channel and Niche Inputs
     render_channel_niche_inputs()
     
-    video_title = st.text_input(t("pages.description_generator.video_title"), value="", placeholder="Örn: Best Techno Mix 2024 | Underground Electronic Music")
-    song_name = st.text_input(t("pages.description_generator.song_name"), value="", placeholder="Örn: Song Name (opsiyonel)")
-    custom_info = st.text_area(t("pages.description_generator.custom_info"), value="", placeholder="Örn: Bu video hakkında ek bilgiler (opsiyonel)")
+    video_title = st.text_input(t("pages.description_generator.video_title"), value="", placeholder="Örn: Best Techno Mix 2024 | Underground Electronic Music", key="description_generator_title")
+    song_name = st.text_input(t("pages.description_generator.song_name"), value="", placeholder="Örn: Song Name (opsiyonel)", key="description_generator_song")
+    custom_info = st.text_area(t("pages.description_generator.custom_info"), value="", placeholder="Örn: Bu video hakkında ek bilgiler (opsiyonel)", key="description_generator_custom_info")
     
     if st.button(t("pages.description_generator.generate_button"), use_container_width=True):
         with st.spinner(t("messages.generating")):
             try:
                 # Get niche and channel from session state
-                niche = st.session_state.get("target_niche", "psychedelic anatolian rock")
-                channel = st.session_state.get("target_channel", "anatolianturkishrock")
+                niche = st.session_state.get("target_niche", "")
+                channel = st.session_state.get("target_channel", "")
                 result = st.session_state.description_generator.generate_description(
                     video_title, song_name, custom_info=custom_info, niche=niche, channel_handle=channel
                 )
@@ -1344,14 +1363,14 @@ elif is_page("tag_suggester"):
     # Channel and Niche Inputs
     render_channel_niche_inputs()
     
-    video_title = st.text_input(t("pages.tag_suggester.video_title"), value="", placeholder="Örn: Best Techno Mix 2024 | Underground Electronic Music")
-    song_name = st.text_input(t("pages.tag_suggester.song_name"), value="", placeholder="Örn: Song Name (opsiyonel)")
+    video_title = st.text_input(t("pages.tag_suggester.video_title"), value="", placeholder="Örn: Best Techno Mix 2024 | Underground Electronic Music", key="tag_suggester_title")
+    song_name = st.text_input(t("pages.tag_suggester.song_name"), value="", placeholder="Örn: Song Name (opsiyonel)", key="tag_suggester_song")
     
     if st.button(t("pages.tag_suggester.suggest_button"), use_container_width=True):
         with st.spinner(t("messages.generating")):
             try:
                 # Get niche from session state
-                niche = st.session_state.get("target_niche", "psychedelic anatolian rock")
+                niche = st.session_state.get("target_niche", "")
                 result = st.session_state.tag_suggester.suggest_tags(video_title, song_name, niche=niche)
                 
                 st.markdown(f"### {t('pages.tag_suggester.suggested_tags')}")
@@ -2165,14 +2184,15 @@ elif is_page("feedback_learning"):
     with tab1:
         st.subheader("Record Feedback on Recommendation")
         
-        recommendation_id = st.text_input("Recommendation ID", placeholder="rec_12345")
+        recommendation_id = st.text_input("Recommendation ID", placeholder="rec_12345", key="feedback_recommendation_id")
         feedback_type = st.selectbox(
             "Feedback Type",
-            ["accepted", "rejected", "modified", "applied"]
+            ["accepted", "rejected", "modified", "applied"],
+            key="feedback_type"
         )
-        rating = st.slider("Rating (1-5)", 1, 5, 3)
-        notes = st.text_area("Notes (optional)")
-        video_id = st.text_input("Video ID (optional)", placeholder="dQw4w9WgXcQ")
+        rating = st.slider("Rating (1-5)", 1, 5, 3, key="feedback_rating")
+        notes = st.text_area("Notes (optional)", key="feedback_notes")
+        video_id = st.text_input("Video ID (optional)", placeholder="dQw4w9WgXcQ", key="feedback_video_id")
         
         if st.button("Record Feedback", use_container_width=True):
             with st.spinner("Recording feedback..."):
@@ -2323,11 +2343,11 @@ elif is_page("viral_predictor"):
     with tab1:
         st.subheader("Analyze Content for Viral Potential")
         
-        title = st.text_input("Video Title", value="", placeholder="Örn: Best Techno Mix 2024 | Underground Electronic Music")
-        description = st.text_area("Video Description", value="", placeholder="Örn: Video açıklamasını buraya girin...", height=150)
-        tags_input = st.text_input("Tags (comma-separated)", value="", placeholder="Örn: techno, electronic, underground, minimal")
-        song_name = st.text_input("Song Name (optional)", value="", placeholder="Örn: Song Name (opsiyonel)")
-        niche = st.text_input("Niche", value=st.session_state.target_niche if st.session_state.target_niche else "", placeholder="Örn: Techno Music, Psychedelic Rock")
+        title = st.text_input("Video Title", value="", placeholder="Örn: Best Techno Mix 2024 | Underground Electronic Music", key="viral_predictor_title")
+        description = st.text_area("Video Description", value="", placeholder="Örn: Video açıklamasını buraya girin...", height=150, key="viral_predictor_description")
+        tags_input = st.text_input("Tags (comma-separated)", value="", placeholder="Örn: techno, electronic, underground, minimal", key="viral_predictor_tags")
+        song_name = st.text_input("Song Name (optional)", value="", placeholder="Örn: Song Name (opsiyonel)", key="viral_predictor_song")
+        niche = st.text_input("Niche", value=st.session_state.target_niche if st.session_state.target_niche else "", placeholder="Örn: Techno Music, Psychedelic Rock", key="viral_predictor_niche")
         
         if st.button("Predict Viral Potential", use_container_width=True):
             with st.spinner("Analyzing viral potential..."):
@@ -2409,7 +2429,7 @@ elif is_page("viral_predictor"):
     with tab2:
         st.subheader("Learn from Viral Content")
         
-        video_id = st.text_input("Viral Video ID", placeholder="dQw4w9WgXcQ")
+        video_id = st.text_input("Viral Video ID", placeholder="dQw4w9WgXcQ", key="viral_learn_video_id")
         
         if st.button("Analyze Viral Video", use_container_width=True):
             with st.spinner("Learning from viral content..."):
@@ -2455,9 +2475,9 @@ elif is_page("competitor_benchmark"):
         
         col1, col2 = st.columns(2)
         with col1:
-            channel_handle = st.text_input("Channel Handle", placeholder="@channelname")
+            channel_handle = st.text_input("Channel Handle", placeholder="@channelname", key="benchmark_channel_handle")
         with col2:
-            channel_id = st.text_input("Channel ID (alternative)", placeholder="UC...")
+            channel_id = st.text_input("Channel ID (alternative)", placeholder="UC...", key="benchmark_channel_id")
         
         if st.button("Benchmark Channel", use_container_width=True):
             with st.spinner("Benchmarking channel..."):
@@ -2678,9 +2698,10 @@ elif is_page("multi_source_data"):
         keywords_input = st.text_area(
             "Keywords (one per line)",
             value="",
-            placeholder="Örn: techno music\nunderground electronic\nminimal techno\nher satıra bir anahtar kelime"
+            placeholder="Örn: techno music\nunderground electronic\nminimal techno\nher satıra bir anahtar kelime",
+            key="multi_source_keywords"
         )
-        niche = st.text_input("Niche", value=st.session_state.target_niche)
+        niche = st.text_input("Niche", value=st.session_state.target_niche, key="multi_source_niche")
         
         if st.button("Synthesize Opportunities", use_container_width=True):
             with st.spinner("Analyzing multiple data sources..."):
@@ -2740,12 +2761,13 @@ elif is_page("multi_source_data"):
     with tab2:
         st.subheader("Google Trends Analysis")
         
-        keywords_input = st.text_input("Keywords (comma-separated)", value="", placeholder="Örn: techno music, electronic, underground, minimal")
-        region = st.selectbox("Region", ["TR", "US", "GB", "DE", "FR"], index=0)
+        keywords_input = st.text_input("Keywords (comma-separated)", value="", placeholder="Örn: techno music, electronic, underground, minimal", key="google_trends_keywords")
+        region = st.selectbox("Region", ["TR", "US", "GB", "DE", "FR"], index=0, key="google_trends_region")
         timeframe = st.selectbox(
             "Timeframe",
             ["today 3-m", "today 12-m", "today 5-y"],
-            index=0
+            index=0,
+            key="google_trends_timeframe"
         )
         
         if st.button("Get Google Trends", use_container_width=True):
@@ -2777,9 +2799,10 @@ elif is_page("multi_source_data"):
         subreddits_input = st.text_input(
             "Subreddits (comma-separated)",
             value="",
-            placeholder="Örn: techno, electronicmusic, underground, minimaltechno"
+            placeholder="Örn: techno, electronicmusic, underground, minimaltechno",
+            key="reddit_subreddits"
         )
-        limit = st.slider("Posts per subreddit", 5, 25, 10)
+        limit = st.slider("Posts per subreddit", 5, 25, 10, key="reddit_limit")
         
         if st.button("Get Reddit Trends", use_container_width=True):
             with st.spinner("Fetching Reddit trends..."):
@@ -2821,8 +2844,8 @@ elif is_page("multi_source_data"):
     with tab4:
         st.subheader("Twitter/X Trends")
         
-        keywords_input = st.text_input("Keywords (comma-separated)", value="", placeholder="Örn: techno music, electronic, underground, minimal")
-        region = st.selectbox("Region", ["Turkey", "United States", "Global"], index=0)
+        keywords_input = st.text_input("Keywords (comma-separated)", value="", placeholder="Örn: techno music, electronic, underground, minimal", key="twitter_trends_keywords")
+        region = st.selectbox("Region", ["Turkey", "United States", "Global"], index=0, key="twitter_trends_region")
         
         if st.button("Get Twitter Trends", use_container_width=True):
             with st.spinner("Fetching Twitter trends..."):
@@ -3778,12 +3801,12 @@ elif is_page("safety_ethics"):
         col1, col2 = st.columns(2)
         
         with col1:
-            title = st.text_input("Title", placeholder="Enter video title")
-            description = st.text_area("Description", placeholder="Enter video description", height=150)
+            title = st.text_input("Title", placeholder="Enter video title", key="safety_ethics_title")
+            description = st.text_area("Description", placeholder="Enter video description", height=150, key="safety_ethics_description")
         
         with col2:
-            tags_input = st.text_input("Tags (comma-separated)", placeholder="tag1, tag2, tag3")
-            content_type = st.selectbox("Content Type", ["video", "thumbnail", "recommendation"])
+            tags_input = st.text_input("Tags (comma-separated)", placeholder="tag1, tag2, tag3", key="safety_ethics_tags")
+            content_type = st.selectbox("Content Type", ["video", "thumbnail", "recommendation"], key="safety_ethics_content_type")
         
         if st.button("🔍 Check Safety", use_container_width=True):
             if title:
@@ -4018,7 +4041,8 @@ elif is_page("video_seo_audit"):
     video_id_input = st.text_input(
         "Video ID or URL",
         placeholder="Enter YouTube video ID or full URL",
-        help="You can find the video ID in the YouTube URL: youtube.com/watch?v=VIDEO_ID"
+        help="You can find the video ID in the YouTube URL: youtube.com/watch?v=VIDEO_ID",
+        key="seo_audit_video_id"
     )
     
     if video_id_input:
@@ -4136,7 +4160,8 @@ elif is_page("caption_optimizer"):
     
     video_id_input = st.text_input(
         "Video ID or URL",
-        placeholder="Enter YouTube video ID or full URL"
+        placeholder="Enter YouTube video ID or full URL",
+        key="caption_optimizer_video_id"
     )
     
     if video_id_input:
@@ -4155,7 +4180,9 @@ elif is_page("caption_optimizer"):
                     try:
                         keywords_input = st.text_input("Target Keywords (comma-separated)", 
                                                        value="",
-                                                       placeholder="Örn: techno, electronic, underground, minimal")
+                                                       placeholder="Örn: techno, electronic, underground, minimal",
+                                                       key="caption_analyze_keywords",
+                                                       key="caption_analyze_keywords")
                         keywords = [k.strip() for k in keywords_input.split(",")] if keywords_input else None
                         
                         analysis = st.session_state.caption_optimizer.analyze_captions(video_id, keywords)
@@ -4264,7 +4291,8 @@ elif is_page("engagement_booster"):
     
     video_id_input = st.text_input(
         "Video ID or URL",
-        placeholder="Enter YouTube video ID or full URL"
+        placeholder="Enter YouTube video ID or full URL",
+        key="engagement_booster_video_id"
     )
     
     if video_id_input:
@@ -4366,7 +4394,8 @@ elif is_page("thumbnail_enhancer"):
     
     video_id_input = st.text_input(
         "Video ID or URL",
-        placeholder="Enter YouTube video ID or full URL"
+        placeholder="Enter YouTube video ID or full URL",
+        key="thumbnail_enhancer_video_id"
     )
     
     if video_id_input:

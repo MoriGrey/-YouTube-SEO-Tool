@@ -45,7 +45,7 @@ tweepy>=4.14.0  # Twitter API (optional)
 
 # Security & Encryption
 cryptography>=41.0.0  # Fernet encryption for API keys
-streamlit-authenticator>=0.2.3  # User authentication
+streamlit-authenticator>=0.4.2  # User authentication
 bcrypt>=4.0.1  # Password hashing
 PyYAML>=6.0  # YAML parsing for auth config
 bleach>=6.0.0  # HTML sanitization (XSS protection)
