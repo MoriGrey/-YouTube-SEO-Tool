@@ -4340,7 +4340,9 @@ elif is_page("engagement_booster"):
         if st.button("🎯 Get Engagement Suggestions", use_container_width=True, type="primary"):
             with st.spinner("Analyzing engagement opportunities..."):
                 try:
-                    suggestions = st.session_state.engagement_booster.suggest_engagement_elements(video_id)
+                    # Get niche from session state
+                    niche = st.session_state.get("target_niche", "")
+                    suggestions = st.session_state.engagement_booster.suggest_engagement_elements(video_id, niche=niche)
                     
                     if "error" in suggestions:
                         st.error(f"Error: {suggestions['error']}")

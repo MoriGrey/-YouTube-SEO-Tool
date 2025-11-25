@@ -32,7 +32,8 @@ class EngagementBooster:
     def suggest_engagement_elements(
         self,
         video_id: str,
-        video_duration: Optional[int] = None
+        video_duration: Optional[int] = None,
+        niche: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Suggest engagement elements (polls, cards, end screens) for a video.
@@ -66,9 +67,9 @@ class EngagementBooster:
         description = snippet.get("description", "")
         
         # Analyze video for engagement opportunities
-        poll_suggestions = self._suggest_polls(title, description, video_duration)
-        card_suggestions = self._suggest_cards(title, description, video_duration, statistics)
-        end_screen_suggestions = self._suggest_end_screens(title, description, video_duration)
+        poll_suggestions = self._suggest_polls(title, description, video_duration, niche)
+        card_suggestions = self._suggest_cards(title, description, video_duration, statistics, niche)
+        end_screen_suggestions = self._suggest_end_screens(title, description, video_duration, niche)
         
         # Calculate engagement score
         engagement_score = self._calculate_engagement_score(
@@ -115,7 +116,8 @@ class EngagementBooster:
         self,
         title: str,
         description: str,
-        duration: int
+        duration: int,
+        niche: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Suggest poll questions and timing."""
         suggestions = []
@@ -137,20 +139,40 @@ class EngagementBooster:
                 "priority": "low"
             }]
         
-        # Generate poll suggestions based on content
+        # Generate poll suggestions based on content and niche
         title_lower = title.lower()
         description_lower = description.lower()
+        niche_lower = (niche or "").lower()
+        
+        # Extract keywords from niche for dynamic suggestions
+        niche_keywords = niche_lower.split() if niche else []
         
         # Poll 1: Genre/style preference (early in video)
-        if any(kw in title_lower or kw in description_lower for kw in ["rock", "psychedelic", "70s"]):
+        # Check if video/content matches niche or has music-related keywords
+        music_keywords = ["rock", "music", "song", "cover", "techno", "electronic", "folk", "psychedelic", "oriental", "70s", "80s"]
+        if any(kw in title_lower or kw in description_lower for kw in music_keywords) or niche:
+            # Generate dynamic options based on niche
+            if niche and len(niche_keywords) > 0:
+                # Use niche to generate relevant options
+                niche_main = niche_keywords[0] if niche_keywords else "Music"
+                options = [
+                    niche.title(),  # Main niche
+                    f"More {niche.title()}",  # More of same
+                    "Related Genres",  # Related
+                    "Your suggestion in comments"  # User input
+                ]
+            else:
+                # Default options if no niche
+                options = [
+                    "This Style",
+                    "Related Genres",
+                    "Different Style",
+                    "All of the above"
+                ]
+            
             suggestions.append({
                 "question": "What's your favorite style?",
-                "options": [
-                    "Psychedelic Rock",
-                    "Classic Rock",
-                    "Folk Rock",
-                    "All of the above"
-                ],
+                "options": options,
                 "timing_seconds": int(duration * 0.25),  # 25% into video
                 "timing_percentage": 25,
                 "reason": "Engage viewers early with genre preference",
@@ -159,14 +181,26 @@ class EngagementBooster:
         
         # Poll 2: Song preference (mid-video)
         if poll_count >= 2:
+            # Generate dynamic options based on niche
+            if niche and len(niche_keywords) > 0:
+                niche_main = niche_keywords[0] if niche_keywords else "Music"
+                options = [
+                    f"More {niche.title()}",
+                    f"Related {niche_main.title()} Styles",
+                    "Different Genres",
+                    "Your suggestion in comments"
+                ]
+            else:
+                options = [
+                    "More of This Style",
+                    "Related Genres",
+                    "Different Styles",
+                    "Your suggestion in comments"
+                ]
+            
             suggestions.append({
                 "question": "Which song should we cover next?",
-                "options": [
-                    "More Psychedelic Rock",
-                    "Classic Turkish Folk",
-                    "70s Rock Covers",
-                    "Your suggestion in comments"
-                ],
+                "options": options,
                 "timing_seconds": int(duration * 0.50),  # 50% into video
                 "timing_percentage": 50,
                 "reason": "Gather content ideas and increase engagement",
@@ -196,7 +230,8 @@ class EngagementBooster:
         title: str,
         description: str,
         duration: int,
-        statistics: Dict[str, Any]
+        statistics: Dict[str, Any],
+        niche: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Suggest cards (links to other videos/playlists)."""
         suggestions = []
@@ -218,9 +253,15 @@ class EngagementBooster:
             }]
         
         # Card 1: Related video/playlist (early)
+        # Generate dynamic title based on niche
+        if niche:
+            card_title = f"More {niche.title()}"
+        else:
+            card_title = "More Related Content"
+        
         suggestions.append({
             "type": "video_or_playlist",
-            "title": "More Psychedelic Anatolian Rock",
+            "title": card_title,
             "description": "Link to playlist or related video",
             "timing_seconds": int(duration * 0.30),
             "timing_percentage": 30,
@@ -290,7 +331,8 @@ class EngagementBooster:
         self,
         title: str,
         description: str,
-        duration: int
+        duration: int,
+        niche: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Suggest end screen elements."""
         suggestions = []
@@ -332,9 +374,15 @@ class EngagementBooster:
         })
         
         # Element 3: Playlist
+        # Generate dynamic title based on niche
+        if niche:
+            playlist_title = f"More {niche.title()}"
+        else:
+            playlist_title = "More Music"
+        
         suggestions.append({
             "type": "playlist",
-            "title": "More Music",
+            "title": playlist_title,
             "description": "Link to playlist",
             "timing_seconds": end_screen_start,
             "duration_seconds": 20,
