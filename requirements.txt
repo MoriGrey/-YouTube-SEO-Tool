@@ -49,3 +49,12 @@ streamlit-authenticator>=0.4.2  # User authentication
 bcrypt>=4.0.1  # Password hashing
 PyYAML>=6.0  # YAML parsing for auth config
 bleach>=6.0.0  # HTML sanitization (XSS protection)
+
+# vidIQ Platform - Enhanced Features
+plotly>=5.18.0  # Advanced interactive visualizations
+kaleido>=0.2.1  # Static image export for Plotly
+fastapi>=0.104.0  # REST API framework for browser extension
+uvicorn>=0.24.0  # ASGI server for FastAPI
+openai>=1.3.0  # AI video outline generation (or anthropic>=0.7.0)
+jinja2>=3.1.2  # Template rendering for tutorials
+markdown>=3.5.0  # Markdown parsing for tutorials

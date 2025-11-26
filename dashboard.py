@@ -66,6 +66,13 @@ from src.modules.video_seo_audit import VideoSEOAudit
 from src.modules.caption_optimizer import CaptionOptimizer
 from src.modules.engagement_booster import EngagementBooster
 from src.modules.thumbnail_enhancer import ThumbnailEnhancer
+from src.modules.daily_video_ideas import DailyVideoIdeas
+from src.modules.video_ideas_database import VideoIdeasDatabase
+from src.modules.ai_thumbnail_generator import AIThumbnailGenerator
+from src.modules.channel_audit import ChannelAudit
+from src.modules.competitor_tracker import CompetitorTracker
+from src.modules.content_calendar import ContentCalendar
+from src.modules.ab_test_recommender import ABTestRecommender
 try:
     from src.modules.video_outline_generator import VideoOutlineGenerator
 except ImportError as e:
@@ -592,7 +599,12 @@ with st.sidebar:
         "📝 Caption Optimizer",
         "🎯 Engagement Booster",
         "🖼️ Thumbnail Enhancer",
-        "📋 Video Outline Generator"
+        "📋 Video Outline Generator",
+        "💡 Daily Video Ideas",
+        "📊 Channel Audit",
+        "👥 Competitor Tracker",
+        "📅 Content Calendar",
+        "🧪 A/B Testing"
     ]
     
     # Combine all pages: primary first, then secondary
@@ -893,6 +905,11 @@ def is_page(page_key):
         "continuous_learning": [t("navigation.continuous_learning"), "🔄 Continuous Learning", "🔄 Sürekli Öğrenme"],
         "code_self_improvement": [t("navigation.code_self_improvement"), "⚙️ Code Self-Improvement", "⚙️ Kod Kendini Geliştirme"],
         "safety_ethics": [t("navigation.safety_ethics"), "🛡️ Safety & Ethics", "🛡️ Güvenlik ve Etik"],
+        "💡 Daily Video Ideas": ["💡 Daily Video Ideas"],
+        "📊 Channel Audit": ["📊 Channel Audit"],
+        "👥 Competitor Tracker": ["👥 Competitor Tracker"],
+        "📅 Content Calendar": ["📅 Content Calendar"],
+        "🧪 A/B Testing": ["🧪 A/B Testing"],
         "video_seo_audit": ["🔍 Video SEO Audit", "🔍 Video SEO Audit", "🔍 Video SEO Denetimi"],
         "caption_optimizer": ["📝 Caption Optimizer", "📝 Caption Optimizer", "📝 Altyazı Optimizasyonu"],
         "engagement_booster": ["🎯 Engagement Booster", "🎯 Engagement Booster", "🎯 Etkileşim Artırıcı"],
@@ -4845,6 +4862,340 @@ elif is_page("video_outline_generator"):
                 except Exception as e:
                     st.error(f"Error generating outline: {e}")
                     logger.error(f"Error in video outline generator: {e}", error_type="outline_generation_error")
+
+elif is_page("💡 Daily Video Ideas"):
+    st.title("💡 Daily Video Ideas")
+    st.markdown("Get personalized daily video ideas based on your channel niche and trends")
+    
+    render_channel_niche_inputs()
+    
+    if st.session_state.get("api_key_configured"):
+        niche = st.session_state.get("target_niche", "")
+        channel_handle = st.session_state.get("target_channel", "")
+        
+        if niche:
+            if st.button("Generate Daily Ideas", use_container_width=True):
+                with st.spinner("Generating personalized video ideas..."):
+                    try:
+                        client = create_client(api_key=st.session_state.user_api_key)
+                        trend_predictor = TrendPredictor(client)
+                        keyword_researcher = KeywordResearcher(client)
+                        channel_analyzer = ChannelAnalyzer(client) if channel_handle else None
+                        
+                        daily_ideas = DailyVideoIdeas(
+                            client=client,
+                            trend_predictor=trend_predictor,
+                            keyword_researcher=keyword_researcher,
+                            channel_analyzer=channel_analyzer
+                        )
+                        
+                        ideas_result = daily_ideas.generate_daily_ideas(
+                            niche=niche,
+                            channel_handle=channel_handle if channel_handle else None,
+                            num_ideas=10
+                        )
+                        
+                        st.success(f"Generated {ideas_result['total_ideas']} video ideas!")
+                        
+                        # Display ideas
+                        for i, idea in enumerate(ideas_result.get("ideas", []), 1):
+                            with st.expander(f"💡 Idea #{i}: {idea['title']} (Score: {idea.get('success_score', 0):.0f}/100)"):
+                                st.markdown(f"**Category:** {idea.get('category', 'N/A')}")
+                                st.markdown(f"**Success Level:** {idea.get('success_level', 'N/A')}")
+                                st.markdown(f"**Description:** {idea.get('description', '')}")
+                                st.markdown(f"**Tags:** {', '.join(idea.get('tags', [])[:10])}")
+                        
+                        # Show recommendations
+                        st.markdown("### 📊 Recommendations")
+                        for rec in ideas_result.get("recommendations", []):
+                            st.info(rec)
+                    except Exception as e:
+                        st.error(f"Error generating ideas: {str(e)}")
+        else:
+            st.info("Please enter a niche in the sidebar to generate video ideas")
+    else:
+        st.warning("Please configure your API key in the sidebar")
+
+elif is_page("📊 Channel Audit"):
+    st.title("📊 Channel Audit")
+    st.markdown("Comprehensive channel analysis and optimization report")
+    
+    render_channel_niche_inputs()
+    
+    if st.session_state.get("api_key_configured"):
+        niche = st.session_state.get("target_niche", "")
+        channel_handle = st.session_state.get("target_channel", "")
+        
+        if channel_handle and niche:
+            if st.button("Run Channel Audit", use_container_width=True):
+                with st.spinner("Running comprehensive channel audit..."):
+                    try:
+                        client = create_client(api_key=st.session_state.user_api_key)
+                        channel_analyzer = ChannelAnalyzer(client)
+                        keyword_researcher = KeywordResearcher(client)
+                        title_optimizer = TitleOptimizer(keyword_researcher)
+                        description_generator = DescriptionGenerator()
+                        tag_suggester = TagSuggester(client)
+                        video_seo_audit = VideoSEOAudit(
+                            client, keyword_researcher, title_optimizer,
+                            description_generator, tag_suggester
+                        )
+                        competitor_analyzer = CompetitorAnalyzer(client)
+                        
+                        channel_audit = ChannelAudit(
+                            client=client,
+                            channel_analyzer=channel_analyzer,
+                            video_seo_audit=video_seo_audit,
+                            competitor_analyzer=competitor_analyzer
+                        )
+                        
+                        audit_result = channel_audit.perform_audit(
+                            channel_handle=channel_handle,
+                            niche=niche,
+                            include_competitors=True
+                        )
+                        
+                        # Display results
+                        st.metric("Overall Health Score", f"{audit_result.get('overall_health_score', 0):.1f}/100")
+                        
+                        st.markdown("### 📈 Channel Statistics")
+                        stats = audit_result.get("channel_statistics", {})
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Subscribers", f"{stats.get('subscribers', 0):,}")
+                        with col2:
+                            st.metric("Total Views", f"{stats.get('total_views', 0):,}")
+                        with col3:
+                            st.metric("Total Videos", stats.get("total_videos", 0))
+                        
+                        st.markdown("### 🎯 Action Items")
+                        for item in audit_result.get("action_items", [])[:10]:
+                            priority_emoji = "🔴" if item.get("priority") == "high" else "🟡"
+                            st.markdown(f"{priority_emoji} **{item.get('category', '').upper()}**: {item.get('action', '')}")
+                        
+                        # Export options
+                        st.markdown("### 📥 Export Report")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if st.button("Export as HTML"):
+                                html_report = channel_audit.export_report(audit_result, format="html")
+                                st.download_button("Download HTML", html_report, "channel_audit.html", "text/html")
+                        with col2:
+                            if st.button("Export as JSON"):
+                                json_report = channel_audit.export_report(audit_result, format="json")
+                                st.download_button("Download JSON", json_report, "channel_audit.json", "application/json")
+                    except Exception as e:
+                        st.error(f"Error running audit: {str(e)}")
+        else:
+            st.info("Please enter channel handle and niche in the sidebar")
+    else:
+        st.warning("Please configure your API key in the sidebar")
+
+elif is_page("👥 Competitor Tracker"):
+    st.title("👥 Competitor Tracker")
+    st.markdown("Track competitors and get alerts for new videos")
+    
+    render_channel_niche_inputs()
+    
+    if st.session_state.get("api_key_configured"):
+        try:
+            client = create_client(api_key=st.session_state.user_api_key)
+            competitor_analyzer = CompetitorAnalyzer(client)
+            competitor_tracker = CompetitorTracker(client, competitor_analyzer)
+            
+            # Add competitor section
+            st.markdown("### ➕ Add Competitor")
+            comp_channel_id = st.text_input("Channel ID or Handle", placeholder="@channel or channel_id")
+            comp_channel_name = st.text_input("Channel Name (optional)")
+            
+            if st.button("Add Competitor"):
+                if comp_channel_id:
+                    # Try to get channel ID if handle provided
+                    if comp_channel_id.startswith("@"):
+                        channel_data = client.get_channel_by_handle(comp_channel_id[1:])
+                        if channel_data.get("items"):
+                            comp_channel_id = channel_data["items"][0]["id"]
+                    
+                    if competitor_tracker.add_competitor(
+                        channel_id=comp_channel_id,
+                        channel_name=comp_channel_name or comp_channel_id
+                    ):
+                        st.success("Competitor added successfully!")
+                    else:
+                        st.warning("Competitor already exists")
+                else:
+                    st.error("Please enter a channel ID or handle")
+            
+            # List competitors
+            st.markdown("### 📋 Tracked Competitors")
+            competitors = competitor_tracker.get_competitors()
+            
+            if competitors:
+                for comp in competitors:
+                    with st.expander(f"👤 {comp.get('channel_name', 'Unknown')}"):
+                        st.write(f"**Channel ID:** {comp.get('channel_id')}")
+                        st.write(f"**Last Check:** {comp.get('last_check', 'Never')}")
+                        st.write(f"**New Videos:** {len(comp.get('new_videos', []))}")
+                        
+                        if st.button(f"Remove {comp.get('channel_name')}", key=f"remove_{comp.get('channel_id')}"):
+                            competitor_tracker.remove_competitor(comp.get('channel_id'))
+                            st.rerun()
+            else:
+                st.info("No competitors tracked yet. Add one above!")
+            
+            # Check competitors button
+            if st.button("🔍 Check All Competitors", use_container_width=True):
+                with st.spinner("Checking competitors for new videos..."):
+                    results = competitor_tracker.check_competitors()
+                    st.success(f"Checked {results['competitors_checked']} competitors, found {results['new_videos_found']} new videos")
+                    
+                    if results.get("alerts"):
+                        st.markdown("### 🔔 Alerts")
+                        for alert in results["alerts"][:10]:
+                            if alert.get("type") == "new_video":
+                                video = alert.get("video", {})
+                                st.info(f"🎥 **{alert.get('competitor')}** published: {video.get('title', 'Unknown')}")
+        except Exception as e:
+            st.error(f"Error: {str(e)}")
+    else:
+        st.warning("Please configure your API key in the sidebar")
+
+elif is_page("📅 Content Calendar"):
+    st.title("📅 Content Calendar")
+    st.markdown("Plan and schedule your video content")
+    
+    try:
+        calendar = ContentCalendar()
+        
+        # Schedule video section
+        st.markdown("### ➕ Schedule Video")
+        with st.form("schedule_video_form"):
+            title = st.text_input("Video Title")
+            scheduled_date = st.date_input("Scheduled Date")
+            scheduled_time = st.time_input("Scheduled Time")
+            description = st.text_area("Description (optional)")
+            
+            if st.form_submit_button("Schedule Video"):
+                if title:
+                    video_id = calendar.schedule_video(
+                        title=title,
+                        scheduled_date=scheduled_date.strftime("%Y-%m-%d"),
+                        scheduled_time=scheduled_time.strftime("%H:%M"),
+                        description=description
+                    )
+                    st.success(f"Video scheduled! ID: {video_id}")
+                else:
+                    st.error("Please enter a title")
+        
+        # Upcoming videos
+        st.markdown("### 📆 Upcoming Videos")
+        upcoming = calendar.get_upcoming_videos(days_ahead=30)
+        
+        if upcoming:
+            for video in upcoming:
+                with st.expander(f"📹 {video.get('title', 'Untitled')} - {video.get('scheduled_date')} {video.get('scheduled_time')}"):
+                    st.write(f"**Status:** {video.get('status', 'scheduled')}")
+                    if video.get('description'):
+                        st.write(f"**Description:** {video.get('description')}")
+        else:
+            st.info("No upcoming videos scheduled")
+        
+        # Export calendar
+        st.markdown("### 📥 Export Calendar")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Export as CSV"):
+                csv_data = calendar.export_calendar(format="csv")
+                st.download_button("Download CSV", csv_data, "content_calendar.csv", "text/csv")
+        with col2:
+            if st.button("Export as iCal"):
+                ical_data = calendar.export_calendar(format="ical")
+                st.download_button("Download iCal", ical_data, "content_calendar.ics", "text/calendar")
+    except Exception as e:
+        st.error(f"Error: {str(e)}")
+
+elif is_page("🧪 A/B Testing"):
+    st.title("🧪 A/B Testing")
+    st.markdown("Test title and thumbnail variations to find winners")
+    
+    render_channel_niche_inputs()
+    
+    if st.session_state.get("api_key_configured"):
+        niche = st.session_state.get("target_niche", "")
+        
+        try:
+            client = create_client(api_key=st.session_state.user_api_key)
+            keyword_researcher = KeywordResearcher(client)
+            title_optimizer = TitleOptimizer(keyword_researcher)
+            
+            # Initialize thumbnail generator (optional)
+            openai_key = os.getenv("OPENAI_API_KEY")
+            thumbnail_generator = AIThumbnailGenerator(openai_api_key=openai_key) if openai_key else None
+            
+            ab_tester = ABTestRecommender(
+                title_optimizer=title_optimizer,
+                thumbnail_generator=thumbnail_generator
+            )
+            
+            # Title A/B Test
+            st.markdown("### 📝 Title A/B Test")
+            base_title = st.text_input("Base Title", placeholder="Enter your video title")
+            
+            if st.button("Suggest Title Variations"):
+                if base_title and niche:
+                    suggestions = ab_tester.suggest_title_tests(
+                        base_title=base_title,
+                        niche=niche,
+                        num_variations=5
+                    )
+                    
+                    st.success(f"Generated {len(suggestions.get('variations', []))} title variations")
+                    
+                    for var in suggestions.get("variations", []):
+                        st.markdown(f"**{var.get('variation_id')}**: {var.get('title')} (SEO Score: {var.get('seo_score', 0):.0f})")
+                else:
+                    st.error("Please enter title and niche")
+            
+            # Thumbnail A/B Test
+            st.markdown("### 🖼️ Thumbnail A/B Test")
+            thumb_title = st.text_input("Video Title for Thumbnail", placeholder="Enter video title")
+            thumb_description = st.text_area("Video Description", placeholder="Enter video description")
+            
+            if st.button("Suggest Thumbnail Variations"):
+                if thumb_title and niche:
+                    if thumbnail_generator:
+                        suggestions = ab_tester.suggest_thumbnail_tests(
+                            title=thumb_title,
+                            description=thumb_description or "",
+                            niche=niche,
+                            num_variations=3
+                        )
+                        
+                        if "error" not in suggestions:
+                            st.success(f"Generated {len(suggestions.get('variations', []))} thumbnail variations")
+                            
+                            for var in suggestions.get("variations", []):
+                                st.markdown(f"**{var.get('variation_id')}**: Estimated CTR: {var.get('estimated_ctr', 0):.1f}%")
+                        else:
+                            st.warning(suggestions.get("error"))
+                    else:
+                        st.info("Thumbnail generator requires OPENAI_API_KEY. Using template mode.")
+                else:
+                    st.error("Please enter title and niche")
+            
+            # Active tests
+            st.markdown("### 🔬 Active Tests")
+            active_tests = ab_tester.get_active_tests()
+            
+            if active_tests:
+                for test in active_tests:
+                    st.markdown(f"**Test {test.get('id')}**: {test.get('test_type')} - {test.get('video_id')}")
+            else:
+                st.info("No active tests")
+        except Exception as e:
+            st.error(f"Error: {str(e)}")
+    else:
+        st.warning("Please configure your API key in the sidebar")
 
 elif is_page("learn"):
     # Breadcrumb

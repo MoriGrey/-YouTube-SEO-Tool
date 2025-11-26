@@ -14,18 +14,19 @@ import os
 # Load environment
 load_dotenv()
 
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+# Add project root to path for absolute imports
+project_root = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, project_root)
 
-from utils.youtube_client import YouTubeClient, YouTubeAPIError
-from modules.channel_analyzer import ChannelAnalyzer
-from modules.keyword_researcher import KeywordResearcher
-from modules.competitor_analyzer import CompetitorAnalyzer
-from modules.title_optimizer import TitleOptimizer
-from modules.description_generator import DescriptionGenerator
-from modules.tag_suggester import TagSuggester
-from modules.trend_predictor import TrendPredictor
-from modules.proactive_advisor import ProactiveAdvisor
+from src.utils.youtube_client import YouTubeClient, YouTubeAPIError
+from src.modules.channel_analyzer import ChannelAnalyzer
+from src.modules.keyword_researcher import KeywordResearcher
+from src.modules.competitor_analyzer import CompetitorAnalyzer
+from src.modules.title_optimizer import TitleOptimizer
+from src.modules.description_generator import DescriptionGenerator
+from src.modules.tag_suggester import TagSuggester
+from src.modules.trend_predictor import TrendPredictor
+from src.modules.proactive_advisor import ProactiveAdvisor
 
 console = Console()
 

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube SEO AGI Tool</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      width: 350px;
+      min-height: 400px;
+      background: linear-gradient(135deg, #0e1117 0%, #1e2229 100%);
+      color: #fafafa;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      padding: 1rem;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #3a3f4b;
+    }
+    
+    .header h1 {
+      font-size: 1.25rem;
+      color: #4a9eff;
+      margin-bottom: 0.25rem;
+    }
+    
+    .header p {
+      font-size: 0.85rem;
+      color: #b0b0b0;
+    }
+    
+    .status {
+      background: rgba(58, 63, 75, 0.3);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    
+    .status.active {
+      border: 1px solid #4caf50;
+    }
+    
+    .status.inactive {
+      border: 1px solid #f44336;
+    }
+    
+    .status-icon {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .button {
+      width: 100%;
+      padding: 0.75rem;
+      background: #4a9eff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      margin-bottom: 0.5rem;
+    }
+    
+    .button:hover {
+      background: #357abd;
+    }
+    
+    .button.secondary {
+      background: rgba(58, 63, 75, 0.5);
+    }
+    
+    .button.secondary:hover {
+      background: rgba(58, 63, 75, 0.7);
+    }
+    
+    .features {
+      margin-top: 1rem;
+    }
+    
+    .feature-item {
+      display: flex;
+      align-items: center;
+      padding: 0.5rem;
+      margin-bottom: 0.5rem;
+      background: rgba(58, 63, 75, 0.2);
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    
+    .feature-icon {
+      margin-right: 0.75rem;
+      font-size: 1.1rem;
+    }
+    
+    .footer {
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid #3a3f4b;
+      text-align: center;
+      font-size: 0.8rem;
+      color: #b0b0b0;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🎸 YouTube SEO AGI Tool</h1>
+    <p>Enhance your YouTube experience</p>
+  </div>
+  
+  <div class="status" id="status">
+    <div class="status-icon">⏳</div>
+    <div id="status-text">Checking status...</div>
+  </div>
+  
+  <button class="button" id="analyzeBtn">🔍 Analyze Current Video</button>
+  <button class="button secondary" id="settingsBtn">⚙️ Settings</button>
+  <button class="button secondary" id="dashboardBtn">📊 Open Dashboard</button>
+  
+  <div class="features">
+    <div class="feature-item">
+      <span class="feature-icon">✅</span>
+      <span>SEO Score Overlay</span>
+    </div>
+    <div class="feature-item">
+      <span class="feature-icon">✅</span>
+      <span>Keyword Suggestions</span>
+    </div>
+    <div class="feature-item">
+      <span class="feature-icon">✅</span>
+      <span>Optimization Tips</span>
+    </div>
+  </div>
+  
+  <div class="footer">
+    <p>YouTube SEO AGI Tool v1.0.0</p>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
+
