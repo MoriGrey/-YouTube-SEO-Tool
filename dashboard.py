@@ -4769,13 +4769,16 @@ elif is_page("video_outline_generator"):
                     col1, col2, col3 = st.columns(3)
                     with col1:
                         if st.button("📄 Export as Markdown", use_container_width=True):
-                            md_content = st.session_state.video_outline_generator.export_outline(outline, "markdown")
-                            st.download_button(
-                                "Download Markdown",
-                                md_content,
-                                file_name=f"video_outline_{topic.replace(' ', '_')}.md",
-                                mime="text/markdown"
-                            )
+                            if st.session_state.video_outline_generator:
+                                md_content = st.session_state.video_outline_generator.export_outline(outline, "markdown")
+                                st.download_button(
+                                    "Download Markdown",
+                                    md_content,
+                                    file_name=f"video_outline_{topic.replace(' ', '_')}.md",
+                                    mime="text/markdown"
+                                )
+                            else:
+                                st.error("⚠️ Video Outline Generator is not available.")
                     with col2:
                         if st.button("📋 Export as JSON", use_container_width=True):
                             if not st.session_state.video_outline_generator:
