@@ -66,13 +66,20 @@ from src.modules.video_seo_audit import VideoSEOAudit
 from src.modules.caption_optimizer import CaptionOptimizer
 from src.modules.engagement_booster import EngagementBooster
 from src.modules.thumbnail_enhancer import ThumbnailEnhancer
+from src.modules.video_outline_generator import VideoOutlineGenerator
+from src.modules.learning_center import LearningCenter
+from src.modules.team_manager import TeamManager, UserRole
+from src.modules.enhanced_analytics import EnhancedAnalytics
 from src.utils.i18n import t, get_language, set_language
+from src.utils.database import Database
+import plotly.graph_objects as go
 from src.utils.process_manager import ProcessManager
 from src.utils.encryption import encrypt_api_key, decrypt_api_key, get_encryption_manager
 from src.utils.logger import get_logger
 from src.utils.auth import get_auth_manager, require_auth
 from src.utils.rate_limiter import get_rate_limiter, check_rate_limit
 from src.utils.input_validator import get_validator, validate_channel_handle, validate_niche, sanitize_string
+from src.frontend.components import render_breadcrumb, render_theme_toggle, render_metric_card, loading_spinner
 
 # Initialize logger
 logger = get_logger("youtube_seo_agi_dashboard")
@@ -145,128 +152,85 @@ if auth_manager.is_authenticated():
 
 # Page config
 st.set_page_config(
-    page_title="YouTube SEO AGI Tool",
+    page_title="YouTube SEO AGI Tool - vidIQ-like Platform",
     page_icon="🎸",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Dark Theme CSS
-st.markdown("""
-<style>
-    /* Dark Theme Global Styles */
-    .main .block-container {
-        background-color: #0e1117;
-        color: #fafafa;
-    }
+# API Endpoint Handler (for browser extension)
+# Check if this is an API request
+query_params = st.query_params.to_dict()
+if query_params.get("_api") == "true" or query_params.get("action"):
+    # This is an API request from extension
+    from src.api.streamlit_api import handle_api_request
+    import json
     
-    /* Card Styling for Dark Theme */
-    .card-wrapper {
-        border: 1px solid #3a3f4b !important;
-        border-radius: 10px;
-        padding: 1.5rem;
-        margin: 0.75rem 0;
-        background: #1e2229 !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        color: #fafafa;
-    }
+    # Handle API request
+    response = handle_api_request(query_params)
     
-    .card-title {
-        margin: 0 0 0.5rem 0;
-        color: #fafafa !important;
-        font-size: 1.2rem;
-        font-weight: 600;
-    }
+    # Return JSON response with CORS headers
+    # Streamlit doesn't support custom headers, but we can use HTML with script
+    # For extension, we'll return JSON in a way that can be parsed
+    json_str = json.dumps(response, ensure_ascii=False)
     
-    .card-subtitle {
-        color: #b0b0b0 !important;
-        font-size: 0.9rem;
-        margin: 0.3rem 0;
-    }
+    # Return as HTML with JSON (extension will parse it)
+    st.markdown(f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <script>
+            // CORS-friendly JSON response
+            window.apiResponse = {json_str};
+            // Also set as global for extension to access
+            if (window.parent !== window) {{
+                window.parent.postMessage({{type: 'api-response', data: {json_str}}}, '*');
+            }}
+        </script>
+    </head>
+    <body>
+        <pre id="json-response">{json_str}</pre>
+    </body>
+    </html>
+    """, unsafe_allow_html=True)
     
-    .card-content {
-        color: #d0d0d0 !important;
-        line-height: 1.6;
-        margin-top: 0.5rem;
-    }
+    # Also return as JSON for direct fetch
+    st.json(response)
+    st.stop()
+
+# Load Enhanced CSS and JS
+def load_enhanced_assets():
+    """Load enhanced CSS and JavaScript files."""
+    css_path = os.path.join(project_root, "static", "css", "custom.css")
+    js_path = os.path.join(project_root, "static", "js", "dashboard.js")
     
-    /* Streamlit elements dark theme adjustments */
-    .stMarkdown {
-        color: #fafafa;
-    }
+    # Load CSS
+    if os.path.exists(css_path):
+        with open(css_path, "r", encoding="utf-8") as f:
+            css_content = f.read()
+        st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
+    else:
+        # Fallback to inline CSS if file doesn't exist
+        st.markdown("""
+        <style>
+            .main .block-container { background-color: #0e1117; color: #fafafa; }
+            .card-wrapper { border: 1px solid #3a3f4b; border-radius: 12px; padding: 1.5rem; margin: 1rem 0; background: #1e2229; }
+        </style>
+        """, unsafe_allow_html=True)
     
-    .stTextInput > div > div > input {
-        background-color: #262730;
-        color: #fafafa;
-    }
+    # Load JavaScript
+    if os.path.exists(js_path):
+        with open(js_path, "r", encoding="utf-8") as f:
+            js_content = f.read()
+        st.markdown(f"<script>{js_content}</script>", unsafe_allow_html=True)
     
-    .stSelectbox > div > div > select {
-        background-color: #262730;
-        color: #fafafa;
-    }
-    
-    .stTextArea > div > div > textarea {
-        background-color: #262730;
-        color: #fafafa;
-    }
-    
-    /* Sidebar dark theme */
-    .css-1d391kg {
-        background-color: #0e1117;
-    }
-    
-    /* Metric colors for dark theme */
-    .metric-default {
-        color: #4a9eff !important;
-    }
-    
-    .metric-success {
-        color: #4caf50 !important;
-    }
-    
-    .metric-warning {
-        color: #ffc107 !important;
-    }
-    
-    .metric-error {
-        color: #f44336 !important;
-    }
-    
-    .metric-info {
-        color: #17a2b8 !important;
-    }
-    
-    /* Button styling for dark theme */
-    .stButton > button {
-        background-color: #262730;
-        color: #fafafa;
-        border: 1px solid #3a3f4b;
-    }
-    
-    .stButton > button:hover {
-        background-color: #3a3f4b;
-        border-color: #4a9eff;
-    }
-    
-    /* Dataframe styling */
-    .dataframe {
-        background-color: #1e2229;
-        color: #fafafa;
-    }
-    
-    /* Info, success, warning, error boxes */
-    .stAlert {
-        background-color: #1e2229;
-        border: 1px solid #3a3f4b;
-    }
-    
-    /* Code blocks */
-    .stCodeBlock {
-        background-color: #1e2229;
-        border: 1px solid #3a3f4b;
-    }
-</style>
-""", unsafe_allow_html=True)
+    # Initialize theme from session state
+    theme = st.session_state.get("theme", "dark")
+    st.markdown(f'<script>document.documentElement.setAttribute("data-theme", "{theme}");</script>', unsafe_allow_html=True)
+
+# Load enhanced assets
+load_enhanced_assets()
 
 # Initialize session state
 # CRITICAL: Initialize required keys for Streamlit-Authenticator BEFORE any usage
@@ -309,6 +273,9 @@ if "user_api_key" not in st.session_state:
             st.session_state.encrypted_api_key = env_key
     else:
         st.session_state.encrypted_api_key = ""
+    
+    # Note: API key from localStorage will be auto-filled by JavaScript
+    # The user still needs to click "Save API Key" button to activate it
 if "encrypted_api_key" not in st.session_state:
     st.session_state.encrypted_api_key = ""
 if "api_key_configured" not in st.session_state:
@@ -414,6 +381,7 @@ if st.session_state.api_key_configured and "client" not in st.session_state:
         )
         st.session_state.engagement_booster = EngagementBooster(st.session_state.client)
         st.session_state.thumbnail_enhancer = ThumbnailEnhancer(st.session_state.client)
+        st.session_state.video_outline_generator = VideoOutlineGenerator()
         st.session_state.process_manager = ProcessManager()
         logger.info("All modules initialized successfully")
     except Exception as e:
@@ -536,6 +504,9 @@ def render_channel_niche_inputs():
 
 # Sidebar
 with st.sidebar:
+    # Breadcrumb
+    render_breadcrumb([("Home", "dashboard"), t("pages.dashboard.title")])
+    
     st.title(t("app.title"))
     
     # User Info
@@ -574,7 +545,8 @@ with st.sidebar:
         "🔍 Video SEO Audit",
         "📝 Caption Optimizer",
         "🎯 Engagement Booster",
-        "🖼️ Thumbnail Enhancer"
+        "🖼️ Thumbnail Enhancer",
+        "📋 Video Outline Generator"
     ]
     
     # Combine all pages: primary first, then secondary
@@ -675,6 +647,15 @@ with st.sidebar:
             logger.security_event("api_key_change_initiated", "User initiated API key change")
             logger.audit_trail("api_key_changed", action_type="change_initiated")
             
+            # Clear from localStorage
+            st.markdown("""
+            <script>
+                if (typeof clearAPIKey === 'function') {
+                    clearAPIKey();
+                }
+            </script>
+            """, unsafe_allow_html=True)
+            
             st.session_state.api_key_configured = False
             st.session_state.user_api_key = ""
             st.session_state.encrypted_api_key = ""
@@ -683,13 +664,54 @@ with st.sidebar:
             st.rerun()
     else:
         st.warning("⚠️ API Key Required")
-        api_key_input = st.text_input(
+        # Try to load API key from localStorage
+    api_key_from_storage = ""
+    st.markdown("""
+    <script>
+        (function() {
+            try {
+                const encoded = localStorage.getItem('youtube_api_key');
+                if (encoded) {
+                    const decoded = atob(encoded);
+                    // Store in a hidden input that Streamlit can read
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.id = 'api_key_from_storage';
+                    hiddenInput.value = decoded;
+                    document.body.appendChild(hiddenInput);
+                }
+            } catch (e) {
+                console.error('Failed to load API key from storage:', e);
+            }
+        })();
+    </script>
+    """, unsafe_allow_html=True)
+    
+    api_key_input = st.text_input(
             "YouTube API Key",
             value="",
             type="password",
             help="Enter your YouTube Data API v3 key. Get one for free at: https://console.cloud.google.com/apis/credentials",
             key="api_key_input"
         )
+    
+    # Auto-fill from localStorage if empty
+    if not api_key_input:
+        st.markdown("""
+        <script>
+            setTimeout(function() {
+                const hiddenInput = document.getElementById('api_key_from_storage');
+                if (hiddenInput && hiddenInput.value) {
+                    const apiKeyInput = document.querySelector('input[type="password"][id*="api_key"]');
+                    if (apiKeyInput && !apiKeyInput.value) {
+                        apiKeyInput.value = hiddenInput.value;
+                        apiKeyInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        apiKeyInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+            }, 500);
+        </script>
+        """, unsafe_allow_html=True)
         
         if st.button("💾 Save API Key", type="primary"):
             if api_key_input:
@@ -709,6 +731,15 @@ with st.sidebar:
                         st.session_state.user_api_key = api_key_input.strip()
                         st.session_state.encrypted_api_key = encrypted_key
                         st.session_state.api_key_configured = True
+                        
+                        # Save to localStorage via JavaScript
+                        st.markdown(f"""
+                        <script>
+                            if (typeof saveAPIKey === 'function') {{
+                                saveAPIKey('{api_key_input.strip()}');
+                            }}
+                        </script>
+                        """, unsafe_allow_html=True)
                         
                         # Log security event
                         logger.security_event(
@@ -732,6 +763,16 @@ with st.sidebar:
                         st.session_state.user_api_key = api_key_input.strip()
                         st.session_state.encrypted_api_key = api_key_input.strip()
                         st.session_state.api_key_configured = True
+                        
+                        # Save to localStorage via JavaScript
+                        st.markdown(f"""
+                        <script>
+                            if (typeof saveAPIKey === 'function') {{
+                                saveAPIKey('{api_key_input.strip()}');
+                            }}
+                        </script>
+                        """, unsafe_allow_html=True)
+                        
                         if "client" in st.session_state:
                             del st.session_state.client
                         st.rerun()
@@ -809,7 +850,10 @@ def is_page(page_key):
         "video_seo_audit": ["🔍 Video SEO Audit", "🔍 Video SEO Audit", "🔍 Video SEO Denetimi"],
         "caption_optimizer": ["📝 Caption Optimizer", "📝 Caption Optimizer", "📝 Altyazı Optimizasyonu"],
         "engagement_booster": ["🎯 Engagement Booster", "🎯 Engagement Booster", "🎯 Etkileşim Artırıcı"],
-        "thumbnail_enhancer": ["🖼️ Thumbnail Enhancer", "🖼️ Thumbnail Enhancer", "🖼️ Küçük Resim Geliştirici"]
+        "thumbnail_enhancer": ["🖼️ Thumbnail Enhancer", "🖼️ Thumbnail Enhancer", "🖼️ Küçük Resim Geliştirici"],
+        "video_outline_generator": ["📋 Video Outline Generator", "📋 Video Outline Generator", "📋 Video Planı Oluşturucu"],
+        "learn": ["📚 Learn", "📚 Learn", "📚 Öğren"],
+        "team_workspace": ["👥 Team Workspace", "👥 Team Workspace", "👥 Takım Çalışma Alanı"]
     }
     return page in page_translations.get(page_key, [])
 
@@ -4560,6 +4604,270 @@ elif is_page("thumbnail_enhancer"):
                     
                     except Exception as e:
                         st.error(f"Error: {e}")
+
+elif is_page("video_outline_generator"):
+    # Breadcrumb
+    render_breadcrumb([("Home", "dashboard"), "📋 Video Outline Generator"])
+    
+    st.title("📋 AI Video Outline Generator")
+    st.markdown("Generate structured video outlines with timestamps, talking points, and SEO suggestions.")
+    
+    # Channel and Niche Inputs (optional for outline generation)
+    render_channel_niche_inputs()
+    
+    # Input form
+    col1, col2 = st.columns(2)
+    with col1:
+        topic = st.text_input(
+            "Video Topic *",
+            placeholder="e.g., How to optimize YouTube videos for SEO",
+            help="The main topic or subject of your video"
+        )
+        video_type = st.selectbox(
+            "Video Type",
+            options=["tutorial", "review", "vlog", "educational", "entertainment", "custom"],
+            index=0,
+            help="Select the type of video you're creating"
+        )
+        duration_minutes = st.number_input(
+            "Video Duration (minutes)",
+            min_value=1,
+            max_value=120,
+            value=10,
+            help="Expected duration of your video"
+        )
+    
+    with col2:
+        niche = st.text_input(
+            "Niche (Optional)",
+            value=st.session_state.get("target_niche", ""),
+            placeholder="e.g., Tech Reviews, Music Production",
+            help="Your content niche or category"
+        )
+        target_audience = st.text_input(
+            "Target Audience (Optional)",
+            placeholder="e.g., Beginner YouTubers, Music Producers",
+            help="Who is your target audience?"
+        )
+        key_points = st.text_area(
+            "Key Points to Cover (Optional)",
+            placeholder="Enter one key point per line",
+            help="Specific points you want to cover in the video"
+        )
+    
+    # Generate button
+    if st.button("🚀 Generate Outline", type="primary", use_container_width=True):
+        if not topic:
+            st.error("⚠️ Please enter a video topic")
+        else:
+            with st.spinner("Generating comprehensive video outline..."):
+                try:
+                    # Parse key points
+                    key_points_list = [kp.strip() for kp in key_points.split("\n") if kp.strip()] if key_points else None
+                    
+                    # Generate outline
+                    outline = st.session_state.video_outline_generator.generate_outline(
+                        topic=topic,
+                        video_type=video_type,
+                        duration_minutes=duration_minutes,
+                        niche=niche or st.session_state.get("target_niche"),
+                        target_audience=target_audience,
+                        key_points=key_points_list
+                    )
+                    
+                    # Display outline
+                    st.success("✅ Outline generated successfully!")
+                    
+                    # Overview
+                    st.markdown("### 📊 Overview")
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        render_metric_card(
+                            value=outline["duration_minutes"],
+                            label="Duration (min)",
+                            icon="⏱️",
+                            color="info"
+                        )
+                    with col2:
+                        render_metric_card(
+                            value=len(outline["structure"]),
+                            label="Sections",
+                            icon="📑",
+                            color="info"
+                        )
+                    with col3:
+                        render_metric_card(
+                            value=len(outline["keywords"]),
+                            label="Keywords",
+                            icon="🔑",
+                            color="info"
+                        )
+                    with col4:
+                        render_metric_card(
+                            value=outline["video_type"].title(),
+                            label="Type",
+                            icon="🎬",
+                            color="info"
+                        )
+                    
+                    # Outline Structure
+                    st.markdown("### 📋 Video Outline")
+                    for i, section in enumerate(outline["structure"]):
+                        timestamp = outline["timestamps"][i]["time"] if i < len(outline["timestamps"]) else "00:00"
+                        with st.expander(f"{timestamp} - {section['title']} ({section['duration_seconds']}s)"):
+                            st.markdown(f"**Description:** {section['description']}")
+                            st.markdown("**Talking Points:**")
+                            for point in section['talking_points']:
+                                st.markdown(f"- {point}")
+                    
+                    # Keywords
+                    st.markdown("### 🔑 Keywords")
+                    st.markdown(", ".join([f"`{kw}`" for kw in outline["keywords"]]))
+                    
+                    # SEO Suggestions
+                    st.markdown("### 🎯 SEO Suggestions")
+                    seo = outline["seo_suggestions"]
+                    
+                    st.markdown("#### Title Suggestions")
+                    for title in seo["title_suggestions"]:
+                        st.markdown(f"- {title}")
+                    
+                    st.markdown("#### Description Template")
+                    st.text_area(
+                        "Video Description",
+                        value=seo["description_template"],
+                        height=200,
+                        key="outline_description"
+                    )
+                    
+                    st.markdown("#### Tags")
+                    st.markdown(", ".join([f"`{tag}`" for tag in seo["tags"]]))
+                    
+                    st.markdown("#### Thumbnail Suggestions")
+                    for suggestion in seo["thumbnail_suggestions"]:
+                        st.markdown(f"- {suggestion}")
+                    
+                    # CTA Suggestions
+                    st.markdown("### 📢 Call-to-Action Suggestions")
+                    for cta in outline["cta_suggestions"]:
+                        st.markdown(f"- {cta}")
+                    
+                    # Export options
+                    st.markdown("---")
+                    st.markdown("### 💾 Export Outline")
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        if st.button("📄 Export as Markdown", use_container_width=True):
+                            md_content = st.session_state.video_outline_generator.export_outline(outline, "markdown")
+                            st.download_button(
+                                "Download Markdown",
+                                md_content,
+                                file_name=f"video_outline_{topic.replace(' ', '_')}.md",
+                                mime="text/markdown"
+                            )
+                    with col2:
+                        if st.button("📋 Export as JSON", use_container_width=True):
+                            json_content = st.session_state.video_outline_generator.export_outline(outline, "json")
+                            st.download_button(
+                                "Download JSON",
+                                json_content,
+                                file_name=f"video_outline_{topic.replace(' ', '_')}.json",
+                                mime="application/json"
+                            )
+                    with col3:
+                        if st.button("📝 Export as Text", use_container_width=True):
+                            text_content = st.session_state.video_outline_generator.export_outline(outline, "text")
+                            st.download_button(
+                                "Download Text",
+                                text_content,
+                                file_name=f"video_outline_{topic.replace(' ', '_')}.txt",
+                                mime="text/plain"
+                            )
+                    
+                except Exception as e:
+                    st.error(f"Error generating outline: {e}")
+                    logger.error(f"Error in video outline generator: {e}", error_type="outline_generation_error")
+
+elif is_page("learn"):
+    # Breadcrumb
+    render_breadcrumb([("Home", "dashboard"), "📚 Learn"])
+    
+    st.title("📚 Learning Center")
+    st.markdown("Learn how to optimize your YouTube channel with our comprehensive tutorials and guides.")
+    
+    # Initialize learning center
+    if "learning_center" not in st.session_state:
+        st.session_state.learning_center = LearningCenter()
+    
+    lc = st.session_state.learning_center
+    
+    # Sidebar filters
+    with st.sidebar:
+        st.markdown("### Filters")
+        categories = lc.get_categories()
+        selected_category = st.selectbox(
+            "Category",
+            options=["All"] + list(categories.keys()),
+            key="learn_category_filter"
+        )
+        
+        search_query = st.text_input(
+            "Search Tutorials",
+            placeholder="Search by title or content...",
+            key="learn_search"
+        )
+    
+    # Display tutorials
+    if search_query:
+        tutorials = lc.search_tutorials(search_query)
+        st.markdown(f"### Search Results for '{search_query}'")
+    elif selected_category and selected_category != "All":
+        tutorials = lc.list_tutorials(selected_category)
+        st.markdown(f"### {categories[selected_category]}")
+    else:
+        tutorials = lc.list_tutorials()
+        st.markdown("### All Tutorials")
+    
+    if not tutorials:
+        st.info("No tutorials found. Check back soon for new content!")
+    else:
+        # Learning paths
+        st.markdown("### 🎯 Learning Paths")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("🌱 Beginner Path", use_container_width=True):
+                st.session_state.learn_path = "beginner"
+                st.rerun()
+        with col2:
+            if st.button("📈 Intermediate Path", use_container_width=True):
+                st.session_state.learn_path = "intermediate"
+                st.rerun()
+        with col3:
+            if st.button("🚀 Advanced Path", use_container_width=True):
+                st.session_state.learn_path = "advanced"
+                st.rerun()
+        
+        # Show learning path if selected
+        if st.session_state.get("learn_path"):
+            st.markdown("---")
+            st.markdown(f"### {st.session_state.learn_path.title()} Learning Path")
+            path_tutorials = lc.get_learning_path(st.session_state.learn_path)
+            
+            for i, tutorial in enumerate(path_tutorials, 1):
+                with st.expander(f"{i}. {tutorial['title']} ({tutorial.get('duration', 'N/A')})"):
+                    st.markdown(tutorial["content"], unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        # Tutorial list
+        for tutorial in tutorials:
+            with st.expander(f"📖 {tutorial['title']} - {tutorial.get('difficulty', 'beginner').title()} ({tutorial.get('duration', 'N/A')})"):
+                st.markdown(tutorial["content"], unsafe_allow_html=True)
+                
+                # Tags
+                if tutorial.get("tags"):
+                    st.markdown("**Tags:** " + ", ".join([f"`{tag}`" for tag in tutorial["tags"] if tag]))
 
 # Footer
 st.markdown("---")
