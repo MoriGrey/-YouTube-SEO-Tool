@@ -4785,12 +4785,12 @@ elif is_page("video_outline_generator"):
                                 st.error("⚠️ Video Outline Generator is not available.")
                             else:
                                 json_content = st.session_state.video_outline_generator.export_outline(outline, "json")
-                            st.download_button(
-                                "Download JSON",
-                                json_content,
-                                file_name=f"video_outline_{topic.replace(' ', '_')}.json",
-                                mime="application/json"
-                            )
+                                st.download_button(
+                                    "Download JSON",
+                                    json_content,
+                                    file_name=f"video_outline_{topic.replace(' ', '_')}.json",
+                                    mime="application/json"
+                                )
                     with col3:
                         if st.button("📝 Export as Text", use_container_width=True):
                             if not st.session_state.video_outline_generator:
