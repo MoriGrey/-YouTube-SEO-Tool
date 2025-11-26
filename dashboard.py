@@ -72,9 +72,25 @@ except ImportError as e:
     # Logger not yet initialized, use print for now
     print(f"Warning: VideoOutlineGenerator not available: {e}")
     VideoOutlineGenerator = None
-from src.modules.learning_center import LearningCenter
-from src.modules.team_manager import TeamManager, UserRole
-from src.modules.enhanced_analytics import EnhancedAnalytics
+try:
+    from src.modules.learning_center import LearningCenter
+except ImportError as e:
+    # Logger not yet initialized, use print for now
+    print(f"Warning: LearningCenter not available: {e}")
+    LearningCenter = None
+
+try:
+    from src.modules.team_manager import TeamManager, UserRole
+except ImportError as e:
+    print(f"Warning: TeamManager not available: {e}")
+    TeamManager = None
+    UserRole = None
+
+try:
+    from src.modules.enhanced_analytics import EnhancedAnalytics
+except ImportError as e:
+    print(f"Warning: EnhancedAnalytics not available: {e}")
+    EnhancedAnalytics = None
 from src.utils.i18n import t, get_language, set_language
 from src.utils.database import Database
 import plotly.graph_objects as go
@@ -4817,7 +4833,11 @@ elif is_page("learn"):
     
     # Initialize learning center
     if "learning_center" not in st.session_state:
-        st.session_state.learning_center = LearningCenter()
+        if LearningCenter:
+            st.session_state.learning_center = LearningCenter()
+        else:
+            st.error("⚠️ Learning Center is not available. Please check module dependencies.")
+            st.stop()
     
     lc = st.session_state.learning_center
     
