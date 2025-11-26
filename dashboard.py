@@ -92,7 +92,13 @@ except ImportError as e:
     print(f"Warning: EnhancedAnalytics not available: {e}")
     EnhancedAnalytics = None
 from src.utils.i18n import t, get_language, set_language
-from src.utils.database import Database
+
+try:
+    from src.utils.database import Database
+except ImportError as e:
+    print(f"Warning: Database not available: {e}")
+    Database = None
+
 import plotly.graph_objects as go
 from src.utils.process_manager import ProcessManager
 from src.utils.encryption import encrypt_api_key, decrypt_api_key, get_encryption_manager
