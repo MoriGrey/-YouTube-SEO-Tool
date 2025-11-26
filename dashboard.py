@@ -99,7 +99,11 @@ except ImportError as e:
     print(f"Warning: Database not available: {e}")
     Database = None
 
-import plotly.graph_objects as go
+try:
+    import plotly.graph_objects as go
+except ImportError as e:
+    print(f"Warning: plotly not available: {e}")
+    go = None
 from src.utils.process_manager import ProcessManager
 from src.utils.encryption import encrypt_api_key, decrypt_api_key, get_encryption_manager
 from src.utils.logger import get_logger
