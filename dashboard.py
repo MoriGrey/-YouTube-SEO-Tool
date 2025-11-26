@@ -110,7 +110,19 @@ from src.utils.logger import get_logger
 from src.utils.auth import get_auth_manager, require_auth
 from src.utils.rate_limiter import get_rate_limiter, check_rate_limit
 from src.utils.input_validator import get_validator, validate_channel_handle, validate_niche, sanitize_string
-from src.frontend.components import render_breadcrumb, render_theme_toggle, render_metric_card, loading_spinner
+try:
+    from src.frontend.components import render_breadcrumb, render_theme_toggle, render_metric_card, loading_spinner
+except ImportError as e:
+    print(f"Warning: Frontend components not available: {e}")
+    # Create dummy functions to prevent errors
+    def render_breadcrumb(*args, **kwargs):
+        pass
+    def render_theme_toggle(*args, **kwargs):
+        pass
+    def render_metric_card(*args, **kwargs):
+        pass
+    def loading_spinner(*args, **kwargs):
+        pass
 
 # Initialize logger
 logger = get_logger("youtube_seo_agi_dashboard")
