@@ -11,7 +11,7 @@
     showSEOOverlay: true,
     showKeywordSuggestions: true,
     autoFillEnabled: true, // Enable auto-fill feature
-    autoFillDelay: 500 // Delay before auto-filling (ms)
+    autoFillDelay: 2000 // Delay before auto-filling (ms) - increased for YouTube Studio
   };
   
   // Extract video ID from URL
@@ -49,46 +49,92 @@
   
   // Auto-fill YouTube Studio form fields
   function autoFillYouTubeStudio(data, additionalData = {}) {
-    if (!CONFIG.autoFillEnabled) return;
+    if (!CONFIG.autoFillEnabled) {
+      console.log('Auto-fill is disabled');
+      return;
+    }
     
-    // Wait for form to load
+    console.log('🔍 Starting auto-fill with data:', data);
+    
+    // Wait for form to load (increased delay for YouTube Studio)
     setTimeout(() => {
       let filledCount = 0;
+      const errors = [];
       
-      // Title field - try multiple selectors
+      // Title field - try multiple selectors (YouTube Studio 2024 selectors)
       const titleSelectors = [
         'input[aria-label*="Title" i]',
         'input[name*="title" i]',
         '#textbox[aria-label*="Title" i]',
         'ytd-text-input-renderer input',
         'input[placeholder*="title" i]',
-        'ytd-text-input-renderer #text-input'
+        'ytd-text-input-renderer #text-input',
+        'input[id*="title" i]',
+        'ytd-metadata-editor input[type="text"]',
+        'ytd-metadata-editor #text-input',
+        'ytd-metadata-editor ytd-text-input-renderer input',
+        'input[aria-label*="Başlık" i]', // Turkish
+        'input[aria-label*="Titel" i]' // German
       ];
       
       let titleField = null;
       for (const selector of titleSelectors) {
-        titleField = document.querySelector(selector);
-        if (titleField && titleField.offsetParent !== null) { // Check if visible
-          break;
+        try {
+          titleField = document.querySelector(selector);
+          if (titleField) {
+            // Check if visible (more reliable check)
+            const rect = titleField.getBoundingClientRect();
+            const isVisible = rect.width > 0 && rect.height > 0 && 
+                            titleField.offsetParent !== null &&
+                            window.getComputedStyle(titleField).display !== 'none';
+            if (isVisible) {
+              console.log('✅ Found title field with selector:', selector);
+              break;
+            }
+          }
+        } catch (e) {
+          console.warn('Error checking selector:', selector, e);
         }
       }
       
-      if (titleField && data.title_suggestions && data.title_suggestions.length > 0) {
+      if (!titleField) {
+        errors.push('Title field not found');
+        console.error('❌ Title field not found. Available inputs:', 
+          Array.from(document.querySelectorAll('input, textarea')).map(el => ({
+            tag: el.tagName,
+            id: el.id,
+            name: el.name,
+            ariaLabel: el.getAttribute('aria-label'),
+            placeholder: el.getAttribute('placeholder')
+          }))
+        );
+      } else if (data.title_suggestions && data.title_suggestions.length > 0) {
         const bestTitle = data.title_suggestions[0];
-        if (!titleField.value || titleField.value.trim().length < bestTitle.length) {
-          // Clear and set value
-          titleField.value = '';
-          titleField.focus();
-          titleField.value = bestTitle;
-          
-          // Trigger events
-          titleField.dispatchEvent(new Event('input', { bubbles: true }));
-          titleField.dispatchEvent(new Event('change', { bubbles: true }));
-          titleField.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
-          
-          filledCount++;
-          console.log('✅ Auto-filled title');
-        }
+        console.log('📝 Filling title:', bestTitle);
+        
+        // Clear and set value
+        titleField.focus();
+        titleField.select();
+        titleField.value = '';
+        
+        // Use input event to trigger YouTube's internal handlers
+        titleField.value = bestTitle;
+        
+        // Trigger multiple events to ensure YouTube detects the change
+        const events = ['input', 'change', 'keyup', 'keydown', 'blur'];
+        events.forEach(eventType => {
+          titleField.dispatchEvent(new Event(eventType, { bubbles: true, cancelable: true }));
+        });
+        
+        // Also try setting it via setter (triggers property change)
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(titleField, bestTitle);
+        titleField.dispatchEvent(new Event('input', { bubbles: true }));
+        
+        filledCount++;
+        console.log('✅ Auto-filled title:', bestTitle);
+      } else {
+        errors.push('No title suggestions available');
+        console.warn('⚠️ No title suggestions in data');
       }
       
       // Description field - try multiple selectors
@@ -98,31 +144,62 @@
         '#textbox[aria-label*="Description" i]',
         'ytd-textarea-renderer textarea',
         'textarea[placeholder*="description" i]',
-        'ytd-textarea-renderer #textarea'
+        'ytd-textarea-renderer #textarea',
+        'textarea[id*="description" i]',
+        'ytd-metadata-editor textarea',
+        'ytd-metadata-editor ytd-textarea-renderer textarea',
+        'textarea[aria-label*="Açıklama" i]', // Turkish
+        'textarea[aria-label*="Beschreibung" i]' // German
       ];
       
       let descriptionField = null;
       for (const selector of descSelectors) {
-        descriptionField = document.querySelector(selector);
-        if (descriptionField && descriptionField.offsetParent !== null) {
-          break;
+        try {
+          descriptionField = document.querySelector(selector);
+          if (descriptionField) {
+            const rect = descriptionField.getBoundingClientRect();
+            const isVisible = rect.width > 0 && rect.height > 0 && 
+                            descriptionField.offsetParent !== null &&
+                            window.getComputedStyle(descriptionField).display !== 'none';
+            if (isVisible) {
+              console.log('✅ Found description field with selector:', selector);
+              break;
+            }
+          }
+        } catch (e) {
+          console.warn('Error checking selector:', selector, e);
         }
       }
       
-      if (descriptionField && data.description) {
-        if (!descriptionField.value || descriptionField.value.length < 100) {
-          descriptionField.value = '';
-          descriptionField.focus();
-          descriptionField.value = data.description;
-          
-          // Trigger events
-          descriptionField.dispatchEvent(new Event('input', { bubbles: true }));
-          descriptionField.dispatchEvent(new Event('change', { bubbles: true }));
-          descriptionField.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
-          
-          filledCount++;
-          console.log('✅ Auto-filled description');
-        }
+      if (!descriptionField) {
+        errors.push('Description field not found');
+        console.error('❌ Description field not found');
+      } else if (data.description) {
+        const descText = data.description;
+        console.log('📝 Filling description (length:', descText.length, ')');
+        
+        descriptionField.focus();
+        descriptionField.select();
+        descriptionField.value = '';
+        
+        // Set value
+        descriptionField.value = descText;
+        
+        // Trigger events
+        const events = ['input', 'change', 'keyup', 'keydown', 'blur'];
+        events.forEach(eventType => {
+          descriptionField.dispatchEvent(new Event(eventType, { bubbles: true, cancelable: true }));
+        });
+        
+        // Also try setter
+        Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(descriptionField, descText);
+        descriptionField.dispatchEvent(new Event('input', { bubbles: true }));
+        
+        filledCount++;
+        console.log('✅ Auto-filled description');
+      } else {
+        errors.push('No description available');
+        console.warn('⚠️ No description in data');
       }
       
       // Tags field - YouTube uses chip-based input
@@ -131,41 +208,95 @@
         'input[name*="tag" i]',
         '#chips-input input',
         'yt-chip-cloud-renderer input',
-        'input[placeholder*="tag" i]'
+        'input[placeholder*="tag" i]',
+        'input[id*="tag" i]',
+        'ytd-metadata-editor input[type="text"]',
+        'yt-chip-cloud-renderer ytd-chip-input-renderer input',
+        'input[aria-label*="Etiket" i]', // Turkish
+        'input[aria-label*="Schlagwort" i]' // German
       ];
       
       let tagsField = null;
       for (const selector of tagSelectors) {
-        tagsField = document.querySelector(selector);
-        if (tagsField && tagsField.offsetParent !== null) {
-          break;
+        try {
+          tagsField = document.querySelector(selector);
+          if (tagsField) {
+            const rect = tagsField.getBoundingClientRect();
+            const isVisible = rect.width > 0 && rect.height > 0 && 
+                            tagsField.offsetParent !== null &&
+                            window.getComputedStyle(tagsField).display !== 'none';
+            if (isVisible) {
+              console.log('✅ Found tags field with selector:', selector);
+              break;
+            }
+          }
+        } catch (e) {
+          console.warn('Error checking selector:', selector, e);
         }
       }
       
-      if (tagsField && data.tags && data.tags.length > 0) {
+      if (!tagsField) {
+        errors.push('Tags field not found');
+        console.error('❌ Tags field not found');
+      } else if (data.tags && data.tags.length > 0) {
         // Add tags one by one (YouTube chip system)
         const tagsToAdd = data.tags.slice(0, 15);
+        console.log('📝 Adding tags:', tagsToAdd);
+        
         tagsToAdd.forEach((tag, index) => {
           setTimeout(() => {
             tagsField.focus();
             tagsField.value = tag;
             tagsField.dispatchEvent(new Event('input', { bubbles: true }));
-            tagsField.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }));
-            tagsField.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true }));
-          }, index * 200); // Delay between tags
+            
+            // Simulate Enter key press
+            const enterEvent = new KeyboardEvent('keydown', { 
+              key: 'Enter', 
+              code: 'Enter', 
+              keyCode: 13,
+              which: 13,
+              bubbles: true,
+              cancelable: true
+            });
+            tagsField.dispatchEvent(enterEvent);
+            tagsField.dispatchEvent(new KeyboardEvent('keyup', { 
+              key: 'Enter', 
+              code: 'Enter',
+              bubbles: true 
+            }));
+            
+            console.log('✅ Added tag:', tag);
+          }, index * 300); // Increased delay between tags
         });
         
         filledCount++;
         console.log('✅ Auto-filled tags');
+      } else {
+        errors.push('No tags available');
+        console.warn('⚠️ No tags in data');
       }
       
-      // Show notification
+      // Show notification with details
       if (filledCount > 0) {
         showAutoFillNotification(`✅ Auto-filled ${filledCount} field(s) from SEO analysis`);
       } else {
-        showAutoFillNotification('⚠️ Could not find form fields. Please ensure you are on the video edit page.');
+        const errorMsg = errors.length > 0 ? errors.join(', ') : 'Unknown error';
+        showAutoFillNotification(`⚠️ Could not find form fields: ${errorMsg}. Please ensure you are on the video edit page.`);
+        console.error('❌ Auto-fill failed. Errors:', errors);
+        console.log('📊 Available form elements:', {
+          inputs: Array.from(document.querySelectorAll('input')).length,
+          textareas: Array.from(document.querySelectorAll('textarea')).length,
+          allInputs: Array.from(document.querySelectorAll('input, textarea')).map(el => ({
+            tag: el.tagName,
+            id: el.id,
+            name: el.name,
+            ariaLabel: el.getAttribute('aria-label'),
+            placeholder: el.getAttribute('placeholder'),
+            visible: el.offsetParent !== null
+          }))
+        });
       }
-    }, CONFIG.autoFillDelay);
+    }, Math.max(CONFIG.autoFillDelay, 2000)); // Minimum 2 seconds delay for YouTube Studio
   }
   
   // Show auto-fill notification
