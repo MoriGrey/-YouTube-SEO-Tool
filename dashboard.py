@@ -66,7 +66,12 @@ from src.modules.video_seo_audit import VideoSEOAudit
 from src.modules.caption_optimizer import CaptionOptimizer
 from src.modules.engagement_booster import EngagementBooster
 from src.modules.thumbnail_enhancer import ThumbnailEnhancer
-from src.modules.video_outline_generator import VideoOutlineGenerator
+try:
+    from src.modules.video_outline_generator import VideoOutlineGenerator
+except ImportError as e:
+    # Logger not yet initialized, use print for now
+    print(f"Warning: VideoOutlineGenerator not available: {e}")
+    VideoOutlineGenerator = None
 from src.modules.learning_center import LearningCenter
 from src.modules.team_manager import TeamManager, UserRole
 from src.modules.enhanced_analytics import EnhancedAnalytics
@@ -381,7 +386,10 @@ if st.session_state.api_key_configured and "client" not in st.session_state:
         )
         st.session_state.engagement_booster = EngagementBooster(st.session_state.client)
         st.session_state.thumbnail_enhancer = ThumbnailEnhancer(st.session_state.client)
-        st.session_state.video_outline_generator = VideoOutlineGenerator()
+        if VideoOutlineGenerator:
+            st.session_state.video_outline_generator = VideoOutlineGenerator()
+        else:
+            st.session_state.video_outline_generator = None
         st.session_state.process_manager = ProcessManager()
         logger.info("All modules initialized successfully")
     except Exception as e:
@@ -4606,6 +4614,9 @@ elif is_page("thumbnail_enhancer"):
                         st.error(f"Error: {e}")
 
 elif is_page("video_outline_generator"):
+    if not st.session_state.video_outline_generator:
+        st.error("⚠️ Video Outline Generator is not available. Please check module dependencies.")
+        st.stop()
     # Breadcrumb
     render_breadcrumb([("Home", "dashboard"), "📋 Video Outline Generator"])
     
@@ -4767,7 +4778,10 @@ elif is_page("video_outline_generator"):
                             )
                     with col2:
                         if st.button("📋 Export as JSON", use_container_width=True):
-                            json_content = st.session_state.video_outline_generator.export_outline(outline, "json")
+                            if not st.session_state.video_outline_generator:
+                                st.error("⚠️ Video Outline Generator is not available.")
+                            else:
+                                json_content = st.session_state.video_outline_generator.export_outline(outline, "json")
                             st.download_button(
                                 "Download JSON",
                                 json_content,
@@ -4776,7 +4790,10 @@ elif is_page("video_outline_generator"):
                             )
                     with col3:
                         if st.button("📝 Export as Text", use_container_width=True):
-                            text_content = st.session_state.video_outline_generator.export_outline(outline, "text")
+                            if not st.session_state.video_outline_generator:
+                                st.error("⚠️ Video Outline Generator is not available.")
+                            else:
+                                text_content = st.session_state.video_outline_generator.export_outline(outline, "text")
                             st.download_button(
                                 "Download Text",
                                 text_content,
