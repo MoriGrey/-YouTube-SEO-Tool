@@ -411,12 +411,23 @@
     
     content.innerHTML = '<div class="youtube-seo-loading">Loading similar videos...</div>';
     
+    if (!chrome.runtime || !chrome.runtime.sendMessage) {
+      content.innerHTML = '<div class="youtube-seo-empty">Extension runtime not available</div>';
+      return;
+    }
+    
     chrome.runtime.sendMessage({
       action: 'getSimilarVideos',
       videoId: videoId,
       niche: null,
       maxResults: 5
     }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error('Runtime error:', chrome.runtime.lastError.message);
+        content.innerHTML = '<div class="youtube-seo-empty">Error: ' + chrome.runtime.lastError.message + '</div>';
+        return;
+      }
+      
       if (response && response.success && response.data) {
         const similarVideos = response.data.similar_videos || [];
         const learnings = response.data.learnings || [];
@@ -459,7 +470,8 @@
         
         content.innerHTML = html;
       } else {
-        content.innerHTML = '<div class="youtube-seo-empty">Error loading similar videos</div>';
+        const errorMsg = response?.error || 'Unknown error';
+        content.innerHTML = '<div class="youtube-seo-empty">Error loading similar videos: ' + errorMsg + '</div>';
       }
     });
   }
@@ -536,6 +548,12 @@
     const channelHandle = getChannelHandle();
     
     try {
+      // Check if background script is available
+      if (!chrome.runtime || !chrome.runtime.sendMessage) {
+        console.error('Chrome runtime not available');
+        return;
+      }
+      
       // Request SEO analysis from background script
       chrome.runtime.sendMessage({
         action: 'getSEOAnalysis',
@@ -544,9 +562,21 @@
         niche: null, // Can be extracted from page if needed
         isStudio: isYouTubeStudio()
       }, (response) => {
+        // Check for runtime errors
+        if (chrome.runtime.lastError) {
+          console.error('Runtime error:', chrome.runtime.lastError.message);
+          // Retry after a delay
+          setTimeout(() => {
+            analyzeCurrentVideo();
+          }, 2000);
+          return;
+        }
+        
         if (response && response.success && response.data) {
           // Load additional data (thumbnail, caption, engagement)
           loadAdditionalData(videoId, response.data, channelHandle);
+        } else if (response && response.error) {
+          console.error('API error:', response.error);
         }
       });
     } catch (error) {
@@ -578,8 +608,26 @@
       }
     }
     
+    // Helper function to safely send messages
+    function safeSendMessage(message, callback) {
+      if (!chrome.runtime || !chrome.runtime.sendMessage) {
+        console.error('Chrome runtime not available');
+        callback({ success: false, error: 'Runtime not available' });
+        return;
+      }
+      
+      chrome.runtime.sendMessage(message, (response) => {
+        if (chrome.runtime.lastError) {
+          console.error('Runtime error:', chrome.runtime.lastError.message);
+          callback({ success: false, error: chrome.runtime.lastError.message });
+          return;
+        }
+        callback(response || { success: false, error: 'No response' });
+      });
+    }
+    
     // Load thumbnail analysis
-    chrome.runtime.sendMessage({
+    safeSendMessage({
       action: 'getThumbnailAnalysis',
       videoId: videoId
     }, (response) => {
@@ -591,7 +639,7 @@
     });
     
     // Load caption analysis
-    chrome.runtime.sendMessage({
+    safeSendMessage({
       action: 'getCaptionAnalysis',
       videoId: videoId,
       niche: null
@@ -605,7 +653,7 @@
     });
     
     // Load engagement suggestions
-    chrome.runtime.sendMessage({
+    safeSendMessage({
       action: 'getEngagementSuggestions',
       videoId: videoId,
       niche: null

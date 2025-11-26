@@ -19,10 +19,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
   
   if (request.action === 'getSEOAnalysis') {
-    getSEOAnalysis(request.videoId, request.channelHandle)
+    getSEOAnalysis(request.videoId, request.channelHandle, request.niche)
       .then(data => sendResponse({ success: true, data }))
       .catch(error => sendResponse({ success: false, error: error.message }));
-    return true;
+    return true; // Keep channel open for async response
   }
   
   if (request.action === 'getKeywordSuggestions') {
@@ -98,7 +98,7 @@ async function getVideoData(videoId) {
 
 // Get SEO analysis
 async function getSEOAnalysis(videoId, channelHandle, niche) {
-  const cacheKey = `seo_${videoId}_${channelHandle}`;
+  const cacheKey = `seo_${videoId}_${channelHandle}_${niche || ''}`;
   const cached = cache.get(cacheKey);
   
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -374,4 +374,18 @@ async function getEngagementSuggestions(videoId, niche) {
 chrome.runtime.onInstalled.addListener(() => {
   console.log('YouTube SEO AGI Tool Extension installed');
 });
+
+// Keep service worker alive
+chrome.runtime.onConnect.addListener((port) => {
+  console.log('Port connected:', port.name);
+  port.onDisconnect.addListener(() => {
+    console.log('Port disconnected:', port.name);
+  });
+});
+
+// Periodic wake-up to keep service worker alive
+setInterval(() => {
+  // This keeps the service worker active
+  console.log('Service worker keep-alive ping');
+}, 20000); // Every 20 seconds
 
