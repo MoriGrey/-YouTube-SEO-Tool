@@ -679,37 +679,90 @@
     const channelHandle = getChannelHandle();
     
     try {
-      // Check if background script is available
-      if (!chrome.runtime || !chrome.runtime.sendMessage) {
-        console.error('Chrome runtime not available');
-        return;
-      }
+      // Try direct fetch from content script (avoids CORS issues)
+      // Content script runs in page context, so it can make cross-origin requests
+      const params = new URLSearchParams({
+        '_api': 'true',
+        'action': 'seo_analyze',
+        'video_id': videoId
+      });
       
-      // Request SEO analysis from background script
-      chrome.runtime.sendMessage({
-        action: 'getSEOAnalysis',
-        videoId: videoId,
-        channelHandle: channelHandle,
-        niche: null, // Can be extracted from page if needed
-        isStudio: isYouTubeStudio()
-      }, (response) => {
-        // Check for runtime errors
-        if (chrome.runtime.lastError) {
-          console.error('Runtime error:', chrome.runtime.lastError.message);
-          // Retry after a delay
-          setTimeout(() => {
-            analyzeCurrentVideo();
-          }, 2000);
+      if (channelHandle) params.append('channel_handle', channelHandle);
+      
+      const url = `${CONFIG.apiBaseUrl}?${params.toString()}`;
+      console.log('Content script: Fetching SEO analysis from:', url);
+      
+      try {
+        const response = await fetch(url, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'omit',
+          headers: {
+            'Accept': 'application/json, text/html, */*'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status} ${response.statusText}`);
+        }
+        
+        const text = await response.text();
+        console.log('Content script: Response received, length:', text.length);
+        
+        // Parse response (same as background script)
+        let result;
+        try {
+          result = JSON.parse(text);
+        } catch (e) {
+          const jsonMatch = text.match(/<pre[^>]*id=["']json-response["'][^>]*>([\s\S]*?)<\/pre>/);
+          if (jsonMatch) {
+            result = JSON.parse(jsonMatch[1]);
+          } else {
+            const scriptMatch = text.match(/window\.apiResponse\s*=\s*({[\s\S]*?});/);
+            if (scriptMatch) {
+              result = JSON.parse(scriptMatch[1]);
+            } else {
+              throw new Error('Could not parse JSON from response');
+            }
+          }
+        }
+        
+        if (result && result.success && result.data) {
+          console.log('Content script: SEO analysis received');
+          // Load additional data (thumbnail, caption, engagement)
+          loadAdditionalData(videoId, result.data, channelHandle);
+        } else {
+          console.error('Content script: API error:', result?.error || 'Unknown error');
+        }
+      } catch (fetchError) {
+        console.error('Content script: Direct fetch failed, trying background script:', fetchError);
+        
+        // Fallback to background script if direct fetch fails
+        if (!chrome.runtime || !chrome.runtime.sendMessage) {
+          console.error('Chrome runtime not available');
           return;
         }
         
-        if (response && response.success && response.data) {
-          // Load additional data (thumbnail, caption, engagement)
-          loadAdditionalData(videoId, response.data, channelHandle);
-        } else if (response && response.error) {
-          console.error('API error:', response.error);
-        }
-      });
+        // Request SEO analysis from background script
+        chrome.runtime.sendMessage({
+          action: 'getSEOAnalysis',
+          videoId: videoId,
+          channelHandle: channelHandle,
+          niche: null,
+          isStudio: isYouTubeStudio()
+        }, (response) => {
+          if (chrome.runtime.lastError) {
+            console.error('Runtime error:', chrome.runtime.lastError.message);
+            return;
+          }
+          
+          if (response && response.success && response.data) {
+            loadAdditionalData(videoId, response.data, channelHandle);
+          } else if (response && response.error) {
+            console.error('API error:', response.error);
+          }
+        });
+      }
     } catch (error) {
       console.error('Error analyzing video:', error);
     }
@@ -830,6 +883,65 @@
     if (request.action === 'analyzeVideo') {
       analyzeCurrentVideo();
       sendResponse({ success: true });
+    } else if (request.action === 'fetchSEOAnalysis') {
+      // Fetch SEO analysis directly from content script (avoids CORS)
+      (async () => {
+        try {
+          const params = new URLSearchParams({
+            '_api': 'true',
+            'action': 'seo_analyze',
+            'video_id': request.videoId
+          });
+          
+          if (request.channelHandle) params.append('channel_handle', request.channelHandle);
+          if (request.niche) params.append('niche', request.niche);
+          
+          const url = `${CONFIG.apiBaseUrl}?${params.toString()}`;
+          console.log('Content script: Fetching SEO analysis for popup from:', url);
+          
+          const response = await fetch(url, {
+            method: 'GET',
+            mode: 'cors',
+            credentials: 'omit',
+            headers: {
+              'Accept': 'application/json, text/html, */*'
+            }
+          });
+          
+          if (!response.ok) {
+            throw new Error(`API error: ${response.status} ${response.statusText}`);
+          }
+          
+          const text = await response.text();
+          let result;
+          
+          try {
+            result = JSON.parse(text);
+          } catch (e) {
+            const jsonMatch = text.match(/<pre[^>]*id=["']json-response["'][^>]*>([\s\S]*?)<\/pre>/);
+            if (jsonMatch) {
+              result = JSON.parse(jsonMatch[1]);
+            } else {
+              const scriptMatch = text.match(/window\.apiResponse\s*=\s*({[\s\S]*?});/);
+              if (scriptMatch) {
+                result = JSON.parse(scriptMatch[1]);
+              } else {
+                throw new Error('Could not parse JSON from response');
+              }
+            }
+          }
+          
+          if (result && result.success && result.data) {
+            sendResponse({ success: true, data: result.data });
+          } else {
+            sendResponse({ success: false, error: result?.error || 'Unknown error' });
+          }
+        } catch (error) {
+          console.error('Content script fetch error:', error);
+          sendResponse({ success: false, error: error.message });
+        }
+      })();
+      return true; // Keep channel open for async response
     } else if (request.action === 'getChannelHandle') {
       const channelHandle = getChannelHandle();
       sendResponse({ channelHandle: channelHandle });

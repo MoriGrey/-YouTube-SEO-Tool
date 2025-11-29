@@ -46,21 +46,42 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Could not get channel handle from content script:', e);
           }
           
-          // Request SEO analysis from background script
-          const response = await new Promise((resolve, reject) => {
-            chrome.runtime.sendMessage({
-              action: 'getSEOAnalysis',
+          // Request SEO analysis - try content script first (avoids CORS)
+          // Content script can make direct fetch requests
+          let response;
+          try {
+            // Send message to content script to fetch data
+            const contentResponse = await chrome.tabs.sendMessage(currentTab.id, {
+              action: 'fetchSEOAnalysis',
               videoId: videoId,
               channelHandle: channelHandle,
               niche: null
-            }, (response) => {
-              if (chrome.runtime.lastError) {
-                reject(new Error(chrome.runtime.lastError.message));
-              } else {
-                resolve(response);
-              }
             });
-          });
+            
+            if (contentResponse && contentResponse.success) {
+              response = { success: true, data: contentResponse.data };
+            } else {
+              throw new Error(contentResponse?.error || 'Content script fetch failed');
+            }
+          } catch (contentError) {
+            console.log('Content script fetch failed, trying background script:', contentError);
+            
+            // Fallback to background script
+            response = await new Promise((resolve, reject) => {
+              chrome.runtime.sendMessage({
+                action: 'getSEOAnalysis',
+                videoId: videoId,
+                channelHandle: channelHandle,
+                niche: null
+              }, (response) => {
+                if (chrome.runtime.lastError) {
+                  reject(new Error(chrome.runtime.lastError.message));
+                } else {
+                  resolve(response);
+                }
+              });
+            });
+          }
           
           if (response && response.success && response.data) {
             // Display results in popup
