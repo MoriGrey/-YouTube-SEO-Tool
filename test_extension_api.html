@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extension API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #fff;
+        }
+        .test-section {
+            background: #2d2d2d;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        button {
+            background: #4a9eff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #357abd;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background: #1e1e1e;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success {
+            color: #4caf50;
+        }
+        .error {
+            color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Extension API Connection Test</h1>
+    <p>Test the connection between extension and Streamlit app</p>
+    
+    <div class="test-section">
+        <h2>1. Health Check</h2>
+        <button onclick="testHealth()">Test Health Endpoint</button>
+        <div id="health-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. SEO Analysis Test</h2>
+        <input type="text" id="video-id" placeholder="Enter YouTube Video ID (e.g., dQw4w9WgXcQ)" style="width: 300px; padding: 8px; margin: 5px;">
+        <button onclick="testSEO()">Test SEO Analysis</button>
+        <div id="seo-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Keyword Suggestions Test</h2>
+        <input type="text" id="topic" placeholder="Enter topic (e.g., psychedelic rock)" style="width: 300px; padding: 8px; margin: 5px;">
+        <button onclick="testKeywords()">Test Keywords</button>
+        <div id="keywords-result" class="result"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'https://youtoubeseo.streamlit.app';
+        
+        async function testHealth() {
+            const resultDiv = document.getElementById('health-result');
+            resultDiv.textContent = 'Testing...';
+            resultDiv.className = 'result';
+            
+            try {
+                const url = `${API_BASE_URL}?_api=true&action=health`;
+                console.log('Testing:', url);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'omit',
+                    headers: {
+                        'Accept': 'application/json, text/html'
+                    }
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+                
+                const text = await response.text();
+                console.log('Response text:', text.substring(0, 500));
+                
+                let result;
+                try {
+                    result = JSON.parse(text);
+                } catch (e) {
+                    // Try to extract JSON from HTML
+                    const jsonMatch = text.match(/<pre[^>]*id=["']json-response["'][^>]*>([\s\S]*?)<\/pre>/);
+                    if (jsonMatch) {
+                        result = JSON.parse(jsonMatch[1]);
+                    } else {
+                        const scriptMatch = text.match(/window\.apiResponse\s*=\s*({[\s\S]*?});/);
+                        if (scriptMatch) {
+                            result = JSON.parse(scriptMatch[1]);
+                        } else {
+                            throw new Error('Could not parse JSON');
+                        }
+                    }
+                }
+                
+                resultDiv.textContent = JSON.stringify(result, null, 2);
+                resultDiv.className = 'result success';
+            } catch (error) {
+                resultDiv.textContent = `ERROR: ${error.message}\n\nStack: ${error.stack}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        async function testSEO() {
+            const videoId = document.getElementById('video-id').value;
+            if (!videoId) {
+                alert('Please enter a video ID');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('seo-result');
+            resultDiv.textContent = 'Testing...';
+            resultDiv.className = 'result';
+            
+            try {
+                const params = new URLSearchParams({
+                    '_api': 'true',
+                    'action': 'seo_analyze',
+                    'video_id': videoId
+                });
+                
+                const url = `${API_BASE_URL}?${params.toString()}`;
+                console.log('Testing SEO:', url);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'omit',
+                    headers: {
+                        'Accept': 'application/json, text/html'
+                    }
+                });
+                
+                const text = await response.text();
+                let result;
+                try {
+                    result = JSON.parse(text);
+                } catch (e) {
+                    const jsonMatch = text.match(/<pre[^>]*id=["']json-response["'][^>]*>([\s\S]*?)<\/pre>/);
+                    if (jsonMatch) {
+                        result = JSON.parse(jsonMatch[1]);
+                    } else {
+                        const scriptMatch = text.match(/window\.apiResponse\s*=\s*({[\s\S]*?});/);
+                        if (scriptMatch) {
+                            result = JSON.parse(scriptMatch[1]);
+                        } else {
+                            throw new Error('Could not parse JSON');
+                        }
+                    }
+                }
+                
+                resultDiv.textContent = JSON.stringify(result, null, 2);
+                resultDiv.className = result.success ? 'result success' : 'result error';
+            } catch (error) {
+                resultDiv.textContent = `ERROR: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        async function testKeywords() {
+            const topic = document.getElementById('topic').value;
+            if (!topic) {
+                alert('Please enter a topic');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('keywords-result');
+            resultDiv.textContent = 'Testing...';
+            resultDiv.className = 'result';
+            
+            try {
+                const params = new URLSearchParams({
+                    '_api': 'true',
+                    'action': 'keywords_suggest',
+                    'topic': topic
+                });
+                
+                const url = `${API_BASE_URL}?${params.toString()}`;
+                console.log('Testing Keywords:', url);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'omit',
+                    headers: {
+                        'Accept': 'application/json, text/html'
+                    }
+                });
+                
+                const text = await response.text();
+                let result;
+                try {
+                    result = JSON.parse(text);
+                } catch (e) {
+                    const jsonMatch = text.match(/<pre[^>]*id=["']json-response["'][^>]*>([\s\S]*?)<\/pre>/);
+                    if (jsonMatch) {
+                        result = JSON.parse(jsonMatch[1]);
+                    } else {
+                        const scriptMatch = text.match(/window\.apiResponse\s*=\s*({[\s\S]*?});/);
+                        if (scriptMatch) {
+                            result = JSON.parse(scriptMatch[1]);
+                        } else {
+                            throw new Error('Could not parse JSON');
+                        }
+                    }
+                }
+                
+                resultDiv.textContent = JSON.stringify(result, null, 2);
+                resultDiv.className = result.success ? 'result success' : 'result error';
+            } catch (error) {
+                resultDiv.textContent = `ERROR: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+    </script>
+</body>
+</html>
+
