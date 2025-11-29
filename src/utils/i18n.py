@@ -11,7 +11,7 @@ from typing import Dict, Any, Optional
 LOCALE_DIR = os.path.join(os.path.dirname(__file__), "../../locales")
 
 # Supported languages
-SUPPORTED_LANGUAGES = ["tr", "en"]
+SUPPORTED_LANGUAGES = ["tr", "en", "de", "nl", "fr", "es"]
 
 # Default language
 DEFAULT_LANGUAGE = "tr"

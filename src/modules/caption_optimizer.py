@@ -15,6 +15,7 @@ import re
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from src.utils.youtube_client import YouTubeClient
 from src.modules.keyword_researcher import KeywordResearcher
+from src.utils import i18n
 
 
 class CaptionOptimizer:
@@ -535,7 +536,7 @@ class CaptionOptimizer:
                 })
             
             # Recommended languages for Anatolian Rock niche
-            recommended_languages = ["tr", "en", "de", "nl", "fr", "es"]
+            recommended_languages = i18n.SUPPORTED_LANGUAGES
             missing_languages = [
                 lang for lang in recommended_languages
                 if lang not in [l["language"] for l in languages]

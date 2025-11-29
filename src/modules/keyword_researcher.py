@@ -10,6 +10,7 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from src.utils.youtube_client import YouTubeClient
+from src.utils import i18n
 
 
 class KeywordResearcher:
@@ -29,7 +30,8 @@ class KeywordResearcher:
         self,
         base_keywords: List[str],
         max_results_per_keyword: int = 10,
-        niche: Optional[str] = None
+        niche: Optional[str] = None,
+        language: str = "en"
     ) -> Dict[str, Any]:
         """
         Research keywords and related terms.
@@ -53,7 +55,7 @@ class KeywordResearcher:
             search_results = self.client.search_videos(
                 keyword,
                 max_results=max_results_per_keyword,
-                region_code="TR"
+                region_code=self._get_region_code(language)
             )
             
             keyword_data[keyword] = {
@@ -181,14 +183,26 @@ class KeywordResearcher:
         
         return recommendations
     
-    def get_trending_keywords(self, niche: str = "psychedelic anatolian rock") -> List[str]:
+    def _get_region_code(self, language: str) -> str:
+        """Get region code for language."""
+        mapping = {
+            "tr": "TR",
+            "en": "US",
+            "de": "DE",
+            "nl": "NL",
+            "fr": "FR",
+            "es": "ES"
+        }
+        return mapping.get(language, "US")
+    
+    def get_trending_keywords(self, niche: str = "psychedelic anatolian rock", language: str = "tr") -> List[str]:
         """Get currently trending keywords in the niche."""
         # Search for recent videos
         recent_results = self.client.search_videos(
             niche,
             max_results=25,
             order="date",
-            region_code="TR"
+            region_code=self._get_region_code(language)
         )
         
         # Extract keywords from titles

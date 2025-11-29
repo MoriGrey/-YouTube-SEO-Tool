@@ -214,7 +214,8 @@ class InputValidator:
         if not api_key:
             return False, "API key cannot be empty"
         
-        api_key = api_key.strip()
+        # Remove all whitespace characters (spaces, tabs, newlines, etc.)
+        api_key = re.sub(r'\s+', '', api_key.strip())
         
         # Check length (YouTube API keys are typically 39 characters)
         if len(api_key) < 20:
@@ -223,15 +224,15 @@ class InputValidator:
         if len(api_key) > 200:
             return False, "API key too long (maximum 200 characters)"
         
-        # Check for dangerous characters
+        # Check for dangerous characters - YouTube API keys only contain alphanumeric, dash, and underscore
+        # Allow only: letters, numbers, dash (-), underscore (_)
         if not re.match(r'^[a-zA-Z0-9_-]+$', api_key):
-            return False, "API key contains invalid characters"
+            return False, f"API key contains invalid characters. Only letters, numbers, dash (-), and underscore (_) are allowed."
         
-        # Check for injection patterns
-        for pattern in self.sql_patterns:
-            if pattern.search(api_key):
-                logger.security_event("sql_injection_attempt", "SQL injection pattern detected in API key")
-                return False, "Invalid API key format"
+        # Note: We don't check for SQL injection patterns in API keys because:
+        # 1. API keys are not used in SQL queries
+        # 2. API keys have a strict format (alphanumeric + dash/underscore only)
+        # 3. False positives could block valid API keys
         
         return True, None
     
