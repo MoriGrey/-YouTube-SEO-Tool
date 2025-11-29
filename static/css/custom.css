@@ -139,21 +139,22 @@ body {
 
 /* ===== BUTTONS ===== */
 .stButton > button {
-    background-color: var(--bg-tertiary);
-    color: var(--text-primary);
-    border: 1px solid var(--border);
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border: 2px solid var(--border) !important;
     border-radius: 8px;
     padding: 0.5rem 1.5rem;
     font-weight: 500;
     transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
 }
 
 .stButton > button:hover {
-    background-color: var(--accent);
-    color: white;
-    border-color: var(--accent);
+    background-color: var(--accent) !important;
+    color: white !important;
+    border-color: var(--accent) !important;
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(74, 158, 255, 0.3);
+    box-shadow: 0 4px 8px rgba(74, 158, 255, 0.4) !important;
 }
 
 .stButton > button:active {
@@ -161,35 +162,62 @@ body {
 }
 
 /* Primary Button */
-.btn-primary {
+.stButton > button[kind="primary"],
+button[kind="primary"] {
     background-color: var(--accent) !important;
     color: white !important;
     border-color: var(--accent) !important;
+    box-shadow: 0 2px 6px rgba(74, 158, 255, 0.3) !important;
 }
 
-.btn-primary:hover {
+.stButton > button[kind="primary"]:hover,
+button[kind="primary"]:hover {
     background-color: var(--accent-hover) !important;
     border-color: var(--accent-hover) !important;
+    box-shadow: 0 4px 10px rgba(74, 158, 255, 0.5) !important;
 }
 
 /* ===== INPUTS ===== */
 .stTextInput > div > div > input,
 .stTextArea > div > div > textarea,
 .stSelectbox > div > div > select {
-    background-color: var(--bg-tertiary);
-    color: var(--text-primary);
-    border: 1px solid var(--border);
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border: 2px solid var(--border) !important;
     border-radius: 8px;
     padding: 0.5rem 0.75rem;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
 }
 
 .stTextInput > div > div > input:focus,
 .stTextArea > div > div > textarea:focus,
 .stSelectbox > div > div > select:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.1);
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.2) !important;
     outline: none;
+    background-color: var(--bg-secondary) !important;
+}
+
+/* Selectbox dropdown */
+.stSelectbox > div > div {
+    background-color: var(--bg-secondary) !important;
+}
+
+/* Selectbox options */
+.stSelectbox [role="listbox"] {
+    background-color: var(--bg-secondary) !important;
+    border: 2px solid var(--border) !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+.stSelectbox [role="option"] {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+}
+
+.stSelectbox [role="option"]:hover {
+    background-color: var(--bg-tertiary) !important;
 }
 
 /* ===== METRICS ===== */
@@ -274,12 +302,68 @@ body {
     border-right: 1px solid var(--border);
 }
 
+/* Sidebar selectbox and inputs */
+[data-testid="stSidebar"] .stSelectbox > div > div > select,
+[data-testid="stSidebar"] .stTextInput > div > div > input {
+    background-color: var(--bg-secondary) !important;
+    border: 2px solid var(--border) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+}
+
+[data-testid="stSidebar"] .stButton > button {
+    background-color: var(--bg-secondary) !important;
+    border: 2px solid var(--border) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
 /* ===== ALERTS ===== */
 .stAlert {
     background-color: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 1rem;
+}
+
+/* ===== EXPANDERS (PANELS) ===== */
+.streamlit-expanderHeader {
+    background-color: var(--bg-secondary) !important;
+    border: 2px solid var(--border) !important;
+    border-radius: 8px !important;
+    padding: 0.75rem 1rem !important;
+    margin: 0.5rem 0 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+    color: var(--text-primary) !important;
+    font-weight: 500 !important;
+}
+
+.streamlit-expanderContent {
+    background-color: var(--card-bg) !important;
+    border: 2px solid var(--border) !important;
+    border-top: none !important;
+    border-radius: 0 0 8px 8px !important;
+    padding: 1rem !important;
+    margin-bottom: 0.5rem !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Streamlit container elements */
+.element-container {
+    background-color: transparent;
+}
+
+/* Streamlit columns */
+[data-testid="column"] {
+    background-color: transparent;
+}
+
+/* Streamlit containers with borders */
+.stContainer {
+    background-color: var(--card-bg) !important;
+    border: 2px solid var(--border) !important;
+    border-radius: 8px !important;
+    padding: 1rem !important;
+    margin: 0.5rem 0 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
 }
 
 /* ===== TABLES/DATAFRAMES ===== */
