@@ -9,6 +9,48 @@ const API_BASE_URL = 'https://youtoubeseo.streamlit.app'; // Update with actual 
 const cache = new Map();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
+// Helper function to parse Streamlit API response
+async function parseStreamlitResponse(response) {
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status} ${response.statusText}`);
+  }
+  
+  const text = await response.text();
+  let result;
+  
+  try {
+    // Try to parse as JSON first (if Streamlit returns pure JSON)
+    result = JSON.parse(text);
+  } catch (e) {
+    // If not JSON, try to extract from HTML
+    // Look for <pre id="json-response"> tag
+    const jsonMatch = text.match(/<pre[^>]*id=["']json-response["'][^>]*>([\s\S]*?)<\/pre>/);
+    if (jsonMatch) {
+      try {
+        result = JSON.parse(jsonMatch[1]);
+      } catch (parseError) {
+        // Try to find JSON in script tag
+        const scriptMatch = text.match(/window\.apiResponse\s*=\s*({[\s\S]*?});/);
+        if (scriptMatch) {
+          result = JSON.parse(scriptMatch[1]);
+        } else {
+          throw new Error('Could not parse JSON from response: ' + parseError.message);
+        }
+      }
+    } else {
+      // Try to find JSON in script tag
+      const scriptMatch = text.match(/window\.apiResponse\s*=\s*({[\s\S]*?});/);
+      if (scriptMatch) {
+        result = JSON.parse(scriptMatch[1]);
+      } else {
+        throw new Error('Could not parse JSON from response. Response text: ' + text.substring(0, 200));
+      }
+    }
+  }
+  
+  return result;
+}
+
 // Listen for messages from content script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'getVideoData') {
@@ -76,19 +118,40 @@ async function getVideoData(videoId) {
     const response = await fetch(url, {
       method: 'GET',
       mode: 'cors',
-      credentials: 'omit'
+      credentials: 'omit',
+      headers: {
+        'Accept': 'application/json, text/html'
+      }
     });
     
     if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+      throw new Error(`API error: ${response.status} ${response.statusText}`);
     }
     
-    const result = await response.json();
+    const text = await response.text();
+    let result;
+    
+    try {
+      result = JSON.parse(text);
+    } catch (e) {
+      const jsonMatch = text.match(/<pre[^>]*id=["']json-response["'][^>]*>([\s\S]*?)<\/pre>/);
+      if (jsonMatch) {
+        result = JSON.parse(jsonMatch[1]);
+      } else {
+        const scriptMatch = text.match(/window\.apiResponse\s*=\s*({[\s\S]*?});/);
+        if (scriptMatch) {
+          result = JSON.parse(scriptMatch[1]);
+        } else {
+          throw new Error('Could not parse JSON from response');
+        }
+      }
+    }
+    
     if (result.success && result.data) {
       cache.set(cacheKey, { data: result.data, timestamp: Date.now() });
       return result.data;
     } else {
-      throw new Error(result.error || 'Unknown error');
+      throw new Error(result.error || result.status || 'Unknown error');
     }
   } catch (error) {
     console.error('Error fetching video data:', error);
@@ -122,20 +185,17 @@ async function getSEOAnalysis(videoId, channelHandle, niche) {
       mode: 'cors',
       credentials: 'omit',
       headers: {
-        'Accept': 'application/json'
+        'Accept': 'application/json, text/html'
       }
     });
     
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
+    const result = await parseStreamlitResponse(response);
     
-    const result = await response.json();
     if (result.success && result.data) {
       cache.set(cacheKey, { data: result.data, timestamp: Date.now() });
       return result.data;
     } else {
-      throw new Error(result.error || 'Unknown error');
+      throw new Error(result.error || result.status || 'Unknown error');
     }
   } catch (error) {
     console.error('Error fetching SEO analysis:', error);
@@ -168,20 +228,17 @@ async function getKeywordSuggestions(topic, niche) {
       mode: 'cors',
       credentials: 'omit',
       headers: {
-        'Accept': 'application/json'
+        'Accept': 'application/json, text/html'
       }
     });
     
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
+    const result = await parseStreamlitResponse(response);
     
-    const result = await response.json();
     if (result.success && result.data) {
       cache.set(cacheKey, { data: result.data, timestamp: Date.now() });
       return result.data;
     } else {
-      throw new Error(result.error || 'Unknown error');
+      throw new Error(result.error || result.status || 'Unknown error');
     }
   } catch (error) {
     console.error('Error fetching keyword suggestions:', error);
@@ -223,19 +280,16 @@ async function getSimilarVideos(videoId, niche, maxResults = 5) {
       method: 'GET',
       mode: 'cors',
       credentials: 'omit',
-      headers: { 'Accept': 'application/json' }
+      headers: { 'Accept': 'application/json, text/html' }
     });
     
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
+    const result = await parseStreamlitResponse(response);
     
-    const result = await response.json();
     if (result.success && result.data) {
       cache.set(cacheKey, { data: result.data, timestamp: Date.now() });
       return result.data;
     } else {
-      throw new Error(result.error || 'Unknown error');
+      throw new Error(result.error || result.status || 'Unknown error');
     }
   } catch (error) {
     console.error('Error fetching similar videos:', error);
@@ -264,19 +318,16 @@ async function getThumbnailAnalysis(videoId) {
       method: 'GET',
       mode: 'cors',
       credentials: 'omit',
-      headers: { 'Accept': 'application/json' }
+      headers: { 'Accept': 'application/json, text/html' }
     });
     
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
+    const result = await parseStreamlitResponse(response);
     
-    const result = await response.json();
     if (result.success && result.data) {
       cache.set(cacheKey, { data: result.data, timestamp: Date.now() });
       return result.data;
     } else {
-      throw new Error(result.error || 'Unknown error');
+      throw new Error(result.error || result.status || 'Unknown error');
     }
   } catch (error) {
     console.error('Error fetching thumbnail analysis:', error);
@@ -307,19 +358,16 @@ async function getCaptionAnalysis(videoId, niche) {
       method: 'GET',
       mode: 'cors',
       credentials: 'omit',
-      headers: { 'Accept': 'application/json' }
+      headers: { 'Accept': 'application/json, text/html' }
     });
     
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
+    const result = await parseStreamlitResponse(response);
     
-    const result = await response.json();
     if (result.success && result.data) {
       cache.set(cacheKey, { data: result.data, timestamp: Date.now() });
       return result.data;
     } else {
-      throw new Error(result.error || 'Unknown error');
+      throw new Error(result.error || result.status || 'Unknown error');
     }
   } catch (error) {
     console.error('Error fetching caption analysis:', error);
@@ -350,19 +398,16 @@ async function getEngagementSuggestions(videoId, niche) {
       method: 'GET',
       mode: 'cors',
       credentials: 'omit',
-      headers: { 'Accept': 'application/json' }
+      headers: { 'Accept': 'application/json, text/html' }
     });
     
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
+    const result = await parseStreamlitResponse(response);
     
-    const result = await response.json();
     if (result.success && result.data) {
       cache.set(cacheKey, { data: result.data, timestamp: Date.now() });
       return result.data;
     } else {
-      throw new Error(result.error || 'Unknown error');
+      throw new Error(result.error || result.status || 'Unknown error');
     }
   } catch (error) {
     console.error('Error fetching engagement suggestions:', error);
