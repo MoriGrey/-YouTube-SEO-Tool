@@ -1,5 +1,7 @@
 // YouTube SEO AGI Tool - Popup Script
 
+const API_BASE_URL = 'https://youtoubeseo.streamlit.app';
+
 document.addEventListener('DOMContentLoaded', () => {
   const statusDiv = document.getElementById('status');
   const statusText = document.getElementById('status-text');
@@ -82,7 +84,25 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
           console.error('Analysis error:', error);
           statusDiv.className = 'status inactive';
-          statusText.textContent = '❌ Error: ' + error.message;
+          
+          // Show detailed error message
+          let errorMsg = error.message || 'Unknown error';
+          if (errorMsg.includes('Failed to fetch') || errorMsg.includes('NetworkError')) {
+            errorMsg = 'Network error: Could not connect to server. Please check:\n1. Internet connection\n2. Server URL: ' + API_BASE_URL + '\n3. Server is running';
+          } else if (errorMsg.includes('CORS')) {
+            errorMsg = 'CORS error: Server does not allow requests from extension. Please check server CORS settings.';
+          } else if (errorMsg.includes('parse JSON')) {
+            errorMsg = 'Response parsing error: Server returned invalid data. ' + errorMsg;
+          }
+          
+          statusText.textContent = '❌ Error: ' + errorMsg;
+          
+          // Show error details in console for debugging
+          console.error('Full error details:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+          });
         } finally {
           analyzeBtn.disabled = false;
         }

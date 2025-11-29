@@ -11,43 +11,68 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Helper function to parse Streamlit API response
 async function parseStreamlitResponse(response) {
+  console.log('Parsing Streamlit response, status:', response.status, response.statusText);
+  console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+  
   if (!response.ok) {
-    throw new Error(`API error: ${response.status} ${response.statusText}`);
+    const errorText = await response.text();
+    console.error('API error response:', errorText.substring(0, 500));
+    throw new Error(`API error: ${response.status} ${response.statusText}. Response: ${errorText.substring(0, 200)}`);
   }
   
   const text = await response.text();
+  console.log('Response text length:', text.length);
+  console.log('Response text preview:', text.substring(0, 500));
+  
   let result;
   
   try {
     // Try to parse as JSON first (if Streamlit returns pure JSON)
     result = JSON.parse(text);
+    console.log('Successfully parsed as JSON');
   } catch (e) {
+    console.log('Not pure JSON, trying to extract from HTML...');
     // If not JSON, try to extract from HTML
     // Look for <pre id="json-response"> tag
     const jsonMatch = text.match(/<pre[^>]*id=["']json-response["'][^>]*>([\s\S]*?)<\/pre>/);
     if (jsonMatch) {
+      console.log('Found JSON in <pre> tag');
       try {
         result = JSON.parse(jsonMatch[1]);
+        console.log('Successfully parsed JSON from <pre> tag');
       } catch (parseError) {
+        console.error('Failed to parse JSON from <pre> tag:', parseError);
         // Try to find JSON in script tag
         const scriptMatch = text.match(/window\.apiResponse\s*=\s*({[\s\S]*?});/);
         if (scriptMatch) {
+          console.log('Found JSON in window.apiResponse');
           result = JSON.parse(scriptMatch[1]);
         } else {
-          throw new Error('Could not parse JSON from response: ' + parseError.message);
+          throw new Error('Could not parse JSON from response: ' + parseError.message + '. JSON content: ' + jsonMatch[1].substring(0, 200));
         }
       }
     } else {
+      console.log('No <pre> tag found, trying window.apiResponse...');
       // Try to find JSON in script tag
       const scriptMatch = text.match(/window\.apiResponse\s*=\s*({[\s\S]*?});/);
       if (scriptMatch) {
+        console.log('Found JSON in window.apiResponse');
         result = JSON.parse(scriptMatch[1]);
       } else {
-        throw new Error('Could not parse JSON from response. Response text: ' + text.substring(0, 200));
+        // Try to find any JSON object in the text
+        const anyJsonMatch = text.match(/\{[\s\S]*"success"[\s\S]*\}/);
+        if (anyJsonMatch) {
+          console.log('Found JSON object in text');
+          result = JSON.parse(anyJsonMatch[0]);
+        } else {
+          console.error('Could not find JSON in response. Full text:', text);
+          throw new Error('Could not parse JSON from response. Response type: ' + response.headers.get('content-type') + '. Text preview: ' + text.substring(0, 500));
+        }
       }
     }
   }
   
+  console.log('Parsed result:', result);
   return result;
 }
 
@@ -180,14 +205,18 @@ async function getSEOAnalysis(videoId, channelHandle, niche) {
     if (niche) params.append('niche', niche);
     
     const url = `${API_BASE_URL}?${params.toString()}`;
+    console.log('Fetching SEO analysis from:', url);
+    
     const response = await fetch(url, {
       method: 'GET',
       mode: 'cors',
       credentials: 'omit',
       headers: {
-        'Accept': 'application/json, text/html'
+        'Accept': 'application/json, text/html, */*'
       }
     });
+    
+    console.log('Fetch response received, status:', response.status);
     
     const result = await parseStreamlitResponse(response);
     

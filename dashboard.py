@@ -220,17 +220,18 @@ if query_params.get("_api") == "true" or query_params.get("action"):
     # Handle API request
     response = handle_api_request(query_params)
     
-    # Return JSON response with CORS headers
-    # Streamlit doesn't support custom headers, but we can use HTML with script
-    # For extension, we'll return JSON in a way that can be parsed
+    # Return JSON response
+    # Streamlit's st.json() should return JSON, but we also provide HTML fallback
     json_str = json.dumps(response, ensure_ascii=False)
     
-    # Return as HTML with JSON (extension will parse it)
+    # Check if request is from extension (has User-Agent or specific header)
+    # For extension requests, return both JSON and HTML fallback
     st.markdown(f"""
     <!DOCTYPE html>
     <html>
     <head>
         <meta charset="UTF-8">
+        <meta http-equiv="Content-Type" content="application/json">
         <script>
             // CORS-friendly JSON response
             window.apiResponse = {json_str};
@@ -246,7 +247,7 @@ if query_params.get("_api") == "true" or query_params.get("action"):
     </html>
     """, unsafe_allow_html=True)
     
-    # Also return as JSON for direct fetch
+    # Return as JSON (Streamlit will set content-type)
     st.json(response)
     st.stop()
 
