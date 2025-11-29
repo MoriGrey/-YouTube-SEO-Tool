@@ -6,6 +6,7 @@ Interactive web dashboard for channel analysis and optimization.
 import streamlit as st
 import sys
 import os
+import re
 from dotenv import load_dotenv
 from datetime import datetime
 import pandas as pd
@@ -335,6 +336,7 @@ if "api_key_configured" not in st.session_state:
 def initialize_client():
     """Initialize YouTube client with user's API key (decrypted if encrypted)."""
     if not st.session_state.user_api_key:
+        logger.warning("No API key found in session state")
         return None
     
     # Get decrypted API key
@@ -348,95 +350,122 @@ def initialize_client():
                 api_key = decrypt_api_key(st.session_state.encrypted_api_key)
         except Exception as e:
             # If decryption fails, use plaintext version
-            st.warning("⚠️ API key decryption failed, using plaintext version")
+            logger.warning(f"API key decryption failed: {e}, using plaintext version")
             api_key = st.session_state.user_api_key
+    
+    # Validate API key format before attempting to create client
+    if not api_key or len(api_key.strip()) < 20:
+        logger.error("API key format validation failed - key too short or empty")
+        return None
     
     try:
         client = create_client(api_key=api_key)
         logger.info("YouTube client initialized successfully")
         logger.api_usage("youtube", "client_init", "success")
         return client
+    except ValueError as e:
+        # API key format error (from YouTubeClient.__init__)
+        error_msg = str(e)
+        logger.error(f"API key format error: {error_msg}", error_type="api_key_format_error")
+        logger.api_usage("youtube", "client_init", "error", error_message=error_msg)
+        return None
     except Exception as e:
-        logger.error(f"Error initializing YouTube client: {e}", error_type="client_init_error")
-        logger.api_usage("youtube", "client_init", "error", error_message=str(e))
-        st.error(f"Error initializing client: {e}")
+        # Other errors (network, API issues, etc.)
+        error_msg = str(e)
+        logger.error(f"Error initializing YouTube client: {error_msg}", error_type="client_init_error")
+        logger.api_usage("youtube", "client_init", "error", error_message=error_msg)
         return None
 
 # Initialize client if API key is available
 if st.session_state.api_key_configured and "client" not in st.session_state:
     try:
         st.session_state.client = initialize_client()
-        st.session_state.channel_analyzer = ChannelAnalyzer(st.session_state.client)
-        st.session_state.keyword_researcher = KeywordResearcher(st.session_state.client)
-        st.session_state.competitor_analyzer = CompetitorAnalyzer(st.session_state.client)
-        st.session_state.title_optimizer = TitleOptimizer(st.session_state.keyword_researcher)
-        st.session_state.description_generator = DescriptionGenerator()
-        st.session_state.tag_suggester = TagSuggester(st.session_state.client)
-        st.session_state.trend_predictor = TrendPredictor(st.session_state.client)
-        st.session_state.proactive_advisor = ProactiveAdvisor(
-            st.session_state.client,
-            st.session_state.channel_analyzer,
-            st.session_state.competitor_analyzer
-        )
-        st.session_state.performance_tracker = PerformanceTracker(st.session_state.client)
-        st.session_state.milestone_tracker = MilestoneTracker(st.session_state.client)
-        st.session_state.feedback_learner = FeedbackLearner(
-            st.session_state.client,
-            st.session_state.performance_tracker
-        )
-        st.session_state.viral_predictor = ViralPredictor(
-            st.session_state.client,
-            st.session_state.channel_analyzer,
-            st.session_state.keyword_researcher
-        )
-        st.session_state.competitor_benchmark = CompetitorBenchmark(
-            st.session_state.client,
-            st.session_state.channel_analyzer,
-            st.session_state.competitor_analyzer
-        )
-        st.session_state.multi_source_integrator = MultiSourceIntegrator(st.session_state.client)
-        st.session_state.knowledge_graph = KnowledgeGraph(
-            st.session_state.client,
-            st.session_state.performance_tracker,
-            st.session_state.feedback_learner,
-            st.session_state.multi_source_integrator,
-            st.session_state.competitor_benchmark
-        )
-        st.session_state.continuous_learner = ContinuousLearner(
-            st.session_state.client,
-            st.session_state.performance_tracker,
-            st.session_state.feedback_learner,
-            st.session_state.multi_source_integrator,
-            st.session_state.knowledge_graph,
-            st.session_state.trend_predictor
-        )
-        st.session_state.code_self_improver = CodeSelfImprover(
-            st.session_state.client,
-            st.session_state.performance_tracker,
-            st.session_state.feedback_learner,
-            st.session_state.knowledge_graph,
-            st.session_state.viral_predictor
-        )
-        st.session_state.safety_ethics_layer = SafetyEthicsLayer()
-        st.session_state.video_seo_audit = VideoSEOAudit(
-            st.session_state.client,
-            st.session_state.keyword_researcher,
-            st.session_state.title_optimizer,
-            st.session_state.description_generator,
-            st.session_state.tag_suggester
-        )
-        st.session_state.caption_optimizer = CaptionOptimizer(
-            st.session_state.client,
-            st.session_state.keyword_researcher
-        )
-        st.session_state.engagement_booster = EngagementBooster(st.session_state.client)
-        st.session_state.thumbnail_enhancer = ThumbnailEnhancer(st.session_state.client)
-        if VideoOutlineGenerator:
-            st.session_state.video_outline_generator = VideoOutlineGenerator()
+        if st.session_state.client is None:
+            # Client initialization failed - but keep api_key_configured as True
+            # The API key is saved, just couldn't be verified
+            logger.warning("Client initialization returned None - API key may be invalid or network issue")
+            # Don't set api_key_configured to False - keep it True so user knows key is saved
+            # Store error state for later display
+            st.session_state.client_init_error = True
+            st.session_state.client_init_error_message = "API key saved but could not be verified. Please check your API key or try again."
         else:
-            st.session_state.video_outline_generator = None
-        st.session_state.process_manager = ProcessManager()
-        logger.info("All modules initialized successfully")
+            # Clear any previous error states
+            if "client_init_error" in st.session_state:
+                del st.session_state.client_init_error
+            if "client_init_error_message" in st.session_state:
+                del st.session_state.client_init_error_message
+            # Client initialized successfully - initialize all modules
+            st.session_state.channel_analyzer = ChannelAnalyzer(st.session_state.client)
+            st.session_state.keyword_researcher = KeywordResearcher(st.session_state.client)
+            st.session_state.competitor_analyzer = CompetitorAnalyzer(st.session_state.client)
+            st.session_state.title_optimizer = TitleOptimizer(st.session_state.keyword_researcher)
+            st.session_state.description_generator = DescriptionGenerator()
+            st.session_state.tag_suggester = TagSuggester(st.session_state.client)
+            st.session_state.trend_predictor = TrendPredictor(st.session_state.client)
+            st.session_state.proactive_advisor = ProactiveAdvisor(
+                st.session_state.client,
+                st.session_state.channel_analyzer,
+                st.session_state.competitor_analyzer
+            )
+            st.session_state.performance_tracker = PerformanceTracker(st.session_state.client)
+            st.session_state.milestone_tracker = MilestoneTracker(st.session_state.client)
+            st.session_state.feedback_learner = FeedbackLearner(
+                st.session_state.client,
+                st.session_state.performance_tracker
+            )
+            st.session_state.viral_predictor = ViralPredictor(
+                st.session_state.client,
+                st.session_state.channel_analyzer,
+                st.session_state.keyword_researcher
+            )
+            st.session_state.competitor_benchmark = CompetitorBenchmark(
+                st.session_state.client,
+                st.session_state.channel_analyzer,
+                st.session_state.competitor_analyzer
+            )
+            st.session_state.multi_source_integrator = MultiSourceIntegrator(st.session_state.client)
+            st.session_state.knowledge_graph = KnowledgeGraph(
+                st.session_state.client,
+                st.session_state.performance_tracker,
+                st.session_state.feedback_learner,
+                st.session_state.multi_source_integrator,
+                st.session_state.competitor_benchmark
+            )
+            st.session_state.continuous_learner = ContinuousLearner(
+                st.session_state.client,
+                st.session_state.performance_tracker,
+                st.session_state.feedback_learner,
+                st.session_state.multi_source_integrator,
+                st.session_state.knowledge_graph,
+                st.session_state.trend_predictor
+            )
+            st.session_state.code_self_improver = CodeSelfImprover(
+                st.session_state.client,
+                st.session_state.performance_tracker,
+                st.session_state.feedback_learner,
+                st.session_state.knowledge_graph,
+                st.session_state.viral_predictor
+            )
+            st.session_state.safety_ethics_layer = SafetyEthicsLayer()
+            st.session_state.video_seo_audit = VideoSEOAudit(
+                st.session_state.client,
+                st.session_state.keyword_researcher,
+                st.session_state.title_optimizer,
+                st.session_state.description_generator,
+                st.session_state.tag_suggester
+            )
+            st.session_state.caption_optimizer = CaptionOptimizer(
+                st.session_state.client,
+                st.session_state.keyword_researcher
+            )
+            st.session_state.engagement_booster = EngagementBooster(st.session_state.client)
+            st.session_state.thumbnail_enhancer = ThumbnailEnhancer(st.session_state.client)
+            if VideoOutlineGenerator:
+                st.session_state.video_outline_generator = VideoOutlineGenerator()
+            else:
+                st.session_state.video_outline_generator = None
+            st.session_state.process_manager = ProcessManager()
+            logger.info("All modules initialized successfully")
     except Exception as e:
         logger.error(f"Error initializing modules: {e}", error_type="module_init_error", 
                     module_count=len([k for k in st.session_state.keys() if not k.startswith('_')]))
@@ -770,74 +799,126 @@ with st.sidebar:
             }, 500);
         </script>
         """, unsafe_allow_html=True)
-        
-        if st.button("💾 Save API Key", type="primary"):
-            if api_key_input:
-                # Validate API key format
-                validator = get_validator()
-                is_valid, error_msg = validator.validate_api_key(api_key_input.strip())
-                
-                if not is_valid:
-                    st.error(f"⚠️ {error_msg}")
-                    logger.warning(f"Invalid API key format: {error_msg}")
-                elif len(api_key_input.strip()) > 20:
-                    try:
-                        # Encrypt API key before storing
-                        encrypted_key = encrypt_api_key(api_key_input.strip())
-                        
-                        # Store both encrypted and plaintext (plaintext only in memory for current session)
-                        st.session_state.user_api_key = api_key_input.strip()
-                        st.session_state.encrypted_api_key = encrypted_key
-                        st.session_state.api_key_configured = True
-                        
-                        # Save to localStorage via JavaScript
-                        st.markdown(f"""
-                        <script>
-                            if (typeof saveAPIKey === 'function') {{
-                                saveAPIKey('{api_key_input.strip()}');
-                            }}
-                        </script>
-                        """, unsafe_allow_html=True)
-                        
-                        # Log security event
-                        logger.security_event(
-                            "api_key_saved",
-                            "API key saved and encrypted",
-                            key_length=len(api_key_input.strip()),
-                            encrypted=True
-                        )
-                        logger.audit_trail("api_key_changed", action_type="save")
-                        
-                        # Reinitialize modules with new API key
-                        if "client" in st.session_state:
-                            del st.session_state.client
-                        st.rerun()
-                    except Exception as e:
-                        logger.error(f"Failed to encrypt API key: {e}", error_type="encryption_error")
-                        st.error(f"Failed to encrypt API key: {e}")
-                        # Fallback: store as plaintext (not recommended but better than failing)
-                        st.warning("⚠️ Encryption failed, storing as plaintext (not secure)")
-                        logger.warning("API key stored as plaintext due to encryption failure")
-                        st.session_state.user_api_key = api_key_input.strip()
-                        st.session_state.encrypted_api_key = api_key_input.strip()
-                        st.session_state.api_key_configured = True
-                        
-                        # Save to localStorage via JavaScript
-                        st.markdown(f"""
-                        <script>
-                            if (typeof saveAPIKey === 'function') {{
-                                saveAPIKey('{api_key_input.strip()}');
-                            }}
-                        </script>
-                        """, unsafe_allow_html=True)
-                        
-                        if "client" in st.session_state:
-                            del st.session_state.client
-                        st.rerun()
-                else:
-                    st.error("Please enter a valid API key (at least 20 characters)")
+    
+    # Save API Key button - always visible when API key is not configured
+    st.markdown("---")
+    if st.button("💾 Save API Key", type="primary", use_container_width=True):
+        if api_key_input:
+            # Clean API key - remove all whitespace
+            cleaned_key = re.sub(r'\s+', '', api_key_input.strip())
+            
+            # Validate API key format
+            validator = get_validator()
+            is_valid, error_msg = validator.validate_api_key(cleaned_key)
+            
+            if not is_valid:
+                st.error(f"⚠️ {error_msg}")
+                logger.warning(f"Invalid API key format: {error_msg}")
             else:
-                st.error("Please enter an API key")
+                try:
+                    # Encrypt API key before storing
+                    encrypted_key = encrypt_api_key(cleaned_key)
+                    
+                    # Store both encrypted and plaintext (plaintext only in memory for current session)
+                    st.session_state.user_api_key = cleaned_key
+                    st.session_state.encrypted_api_key = encrypted_key
+                    st.session_state.api_key_configured = True
+                    
+                    # Save to localStorage via JavaScript
+                    st.markdown(f"""
+                    <script>
+                        if (typeof saveAPIKey === 'function') {{
+                            saveAPIKey('{cleaned_key}');
+                        }}
+                    </script>
+                    """, unsafe_allow_html=True)
+                    
+                    # Log security event
+                    logger.security_event(
+                        "api_key_saved",
+                        "API key saved and encrypted",
+                        key_length=len(api_key_input.strip()),
+                        encrypted=True
+                    )
+                    logger.audit_trail("api_key_changed", action_type="save")
+                    
+                    # Reinitialize modules with new API key
+                    if "client" in st.session_state:
+                        del st.session_state.client
+                    
+                    # Try to initialize client immediately to verify it works
+                    try:
+                        test_client = initialize_client()
+                        if test_client is not None:
+                            st.success("✅ API Key saved and verified successfully!")
+                            # Client will be initialized on rerun
+                            # Store success state
+                            st.session_state.api_key_verification_status = "success"
+                        else:
+                            # API key saved but verification failed - don't set api_key_configured to False
+                            st.warning("⚠️ API Key saved but could not be verified. The key will be checked again on page reload.")
+                            st.info("💡 **Tip:** Make sure your API key is valid and YouTube Data API v3 is enabled in Google Cloud Console.")
+                            # Store error state for later display
+                            st.session_state.api_key_verification_status = "failed"
+                            st.session_state.api_key_verification_message = "API key saved but could not be verified. Please check your API key."
+                    except Exception as e:
+                        error_msg = str(e)
+                        st.warning(f"⚠️ API Key saved but verification failed: {error_msg}")
+                        st.info("💡 **Tip:** Make sure your API key is valid and YouTube Data API v3 is enabled in Google Cloud Console.")
+                        logger.error(f"API key verification failed: {e}")
+                        # Store error state
+                        st.session_state.api_key_verification_status = "error"
+                        st.session_state.api_key_verification_message = f"Verification error: {error_msg}"
+                    
+                    st.rerun()
+                except Exception as e:
+                    logger.error(f"Failed to encrypt API key: {e}", error_type="encryption_error")
+                    st.error(f"Failed to encrypt API key: {e}")
+                    # Fallback: store as plaintext (not recommended but better than failing)
+                    st.warning("⚠️ Encryption failed, storing as plaintext (not secure)")
+                    logger.warning("API key stored as plaintext due to encryption failure")
+                    st.session_state.user_api_key = cleaned_key
+                    st.session_state.encrypted_api_key = cleaned_key
+                    st.session_state.api_key_configured = True
+                    
+                    # Save to localStorage via JavaScript
+                    st.markdown(f"""
+                    <script>
+                        if (typeof saveAPIKey === 'function') {{
+                            saveAPIKey('{cleaned_key}');
+                        }}
+                    </script>
+                    """, unsafe_allow_html=True)
+                    
+                    if "client" in st.session_state:
+                        del st.session_state.client
+                    
+                    # Try to initialize client immediately to verify it works
+                    try:
+                        test_client = initialize_client()
+                        if test_client is not None:
+                            st.success("✅ API Key saved and verified successfully!")
+                            # Store success state
+                            st.session_state.api_key_verification_status = "success"
+                        else:
+                            # API key saved but verification failed - don't set api_key_configured to False
+                            st.warning("⚠️ API Key saved but could not be verified. The key will be checked again on page reload.")
+                            st.info("💡 **Tip:** Make sure your API key is valid and YouTube Data API v3 is enabled in Google Cloud Console.")
+                            # Store error state for later display
+                            st.session_state.api_key_verification_status = "failed"
+                            st.session_state.api_key_verification_message = "API key saved but could not be verified. Please check your API key."
+                    except Exception as e:
+                        error_msg = str(e)
+                        st.warning(f"⚠️ API Key saved but verification failed: {error_msg}")
+                        st.info("💡 **Tip:** Make sure your API key is valid and YouTube Data API v3 is enabled in Google Cloud Console.")
+                        logger.error(f"API key verification failed: {e}")
+                        # Store error state
+                        st.session_state.api_key_verification_status = "error"
+                        st.session_state.api_key_verification_message = f"Verification error: {error_msg}"
+                    
+                    st.rerun()
+        else:
+            st.error("Please enter an API key")
     
     st.markdown("---")
     channel_display = f"@{st.session_state.target_channel}" if st.session_state.target_channel else "Henüz girilmedi"
@@ -921,7 +1002,76 @@ def is_page(page_key):
     return page in page_translations.get(page_key, [])
 
 # Check if API key is configured before showing pages
-if not st.session_state.api_key_configured or "client" not in st.session_state or st.session_state.client is None:
+has_api_key = bool(st.session_state.get("user_api_key"))
+api_key_configured = st.session_state.get("api_key_configured", False)
+has_client = "client" in st.session_state and st.session_state.get("client") is not None
+
+# Show different messages based on the state
+if not has_api_key and not api_key_configured:
+    # No API key at all - check if user has entered it in the input but not saved
+    # Note: We can't check the input value directly here, but we can show a helpful message
+    st.warning("⚠️ **API Key Required**")
+    st.info("""
+    Please configure your YouTube API key in the sidebar to use this application.
+    
+    **Steps:**
+    1. Enter your YouTube API key in the sidebar
+    2. Click the "💾 Save API Key" button
+    3. Wait for verification
+    
+    **How to get a free API key:**
+    1. Go to [Google Cloud Console](https://console.cloud.google.com)
+    2. Create a new project or select existing one
+    3. Enable "YouTube Data API v3"
+    4. Create credentials > API Key
+    5. Copy and paste your API key in the sidebar
+    
+    **Note:** YouTube API is completely free with 10,000 daily quota units (sufficient for most use cases).
+    
+    **💡 Tip:** If you've already entered your API key in the sidebar, make sure to click the "💾 Save API Key" button to save it.
+    """)
+    st.stop()
+elif has_api_key and api_key_configured and not has_client:
+    # API key is saved but client couldn't be initialized
+    st.warning("⚠️ **API Key Verification Failed**")
+    
+    # Show verification status if available
+    verification_status = st.session_state.get("api_key_verification_status")
+    verification_message = st.session_state.get("api_key_verification_message")
+    client_error_message = st.session_state.get("client_init_error_message")
+    
+    if verification_message:
+        st.error(f"❌ {verification_message}")
+    elif client_error_message:
+        st.error(f"❌ {client_error_message}")
+    else:
+        st.error("❌ API key saved but could not be verified. Please check your API key.")
+    
+    st.info("""
+    **Troubleshooting Steps:**
+    1. Verify your API key is correct in the sidebar
+    2. Make sure "YouTube Data API v3" is enabled in [Google Cloud Console](https://console.cloud.google.com)
+    3. Check if your API key has any restrictions (IP, referrer, etc.)
+    4. Try clicking "🔄 Change API Key" in the sidebar and re-entering your key
+    5. Make sure you have internet connection
+    
+    **Note:** Your API key is saved. The application will try to verify it again on the next page reload.
+    """)
+    
+    # Show retry button
+    if st.button("🔄 Retry API Key Verification", type="primary"):
+        # Clear client and error states, then rerun
+        if "client" in st.session_state:
+            del st.session_state.client
+        if "client_init_error" in st.session_state:
+            del st.session_state.client_init_error
+        if "client_init_error_message" in st.session_state:
+            del st.session_state.client_init_error_message
+        st.rerun()
+    
+    st.stop()
+elif not api_key_configured or not has_client:
+    # Fallback case
     st.warning("⚠️ **API Key Required**")
     st.info("""
     Please configure your YouTube API key in the sidebar to use this application.
