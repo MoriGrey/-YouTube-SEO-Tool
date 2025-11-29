@@ -3,7 +3,7 @@
 
 // API base URL (update with your deployment URL)
 // Streamlit Cloud doesn't support separate FastAPI, so we use query params
-const API_BASE_URL = 'https://your-app-url.streamlit.app'; // TODO: Update with actual URL
+const API_BASE_URL = 'https://youtoubeseo.streamlit.app'; // Update with actual Streamlit Cloud URL
 
 // Cache for API responses
 const cache = new Map();

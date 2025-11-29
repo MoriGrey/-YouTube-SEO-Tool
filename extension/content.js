@@ -7,7 +7,7 @@
   
   // Configuration
   const CONFIG = {
-    apiBaseUrl: 'https://your-app-url.streamlit.app', // TODO: Update with actual URL (no /api)
+    apiBaseUrl: 'https://youtoubeseo.streamlit.app', // Update with actual Streamlit Cloud URL
     showSEOOverlay: true,
     showKeywordSuggestions: true,
     autoFillEnabled: true, // Enable auto-fill feature
@@ -618,7 +618,7 @@
   }
   
   // Inject SEO overlay into page
-  function injectSEOOverlay(seoData) {
+  function injectSEOOverlay(seoData, additionalData = {}) {
     // Remove existing overlay
     const existing = document.getElementById('youtube-seo-overlay');
     if (existing) {
@@ -626,7 +626,7 @@
     }
     
     // Create and inject new overlay
-    const overlay = createSEOOverlay(seoData);
+    const overlay = createSEOOverlay(seoData, additionalData);
     
     // Find insertion point
     if (isYouTubeStudio()) {
@@ -830,6 +830,14 @@
     if (request.action === 'analyzeVideo') {
       analyzeCurrentVideo();
       sendResponse({ success: true });
+    } else if (request.action === 'getChannelHandle') {
+      const channelHandle = getChannelHandle();
+      sendResponse({ channelHandle: channelHandle });
+    } else if (request.action === 'showSEOOverlay') {
+      if (request.data) {
+        injectSEOOverlay(request.data, request.additionalData || {});
+        sendResponse({ success: true });
+      }
     } else if (request.action === 'autoFill') {
       if (request.data) {
         autoFillYouTubeStudio(request.data);
