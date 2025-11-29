@@ -184,6 +184,32 @@ async function getVideoData(videoId) {
   }
 }
 
+// Test API connection
+async function testAPIConnection() {
+  try {
+    const testUrl = `${API_BASE_URL}?_api=true&action=health`;
+    console.log('Testing API connection to:', testUrl);
+    
+    const response = await fetch(testUrl, {
+      method: 'GET',
+      mode: 'cors',
+      credentials: 'omit',
+      headers: {
+        'Accept': 'application/json, text/html, */*'
+      }
+    });
+    
+    console.log('Health check response status:', response.status);
+    const text = await response.text();
+    console.log('Health check response text:', text.substring(0, 200));
+    
+    return response.ok;
+  } catch (error) {
+    console.error('Health check failed:', error);
+    return false;
+  }
+}
+
 // Get SEO analysis
 async function getSEOAnalysis(videoId, channelHandle, niche) {
   const cacheKey = `seo_${videoId}_${channelHandle}_${niche || ''}`;
@@ -191,6 +217,15 @@ async function getSEOAnalysis(videoId, channelHandle, niche) {
   
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
     return cached.data;
+  }
+  
+  // Test connection first (only once per session)
+  if (!cache.has('api_connection_tested')) {
+    const isConnected = await testAPIConnection();
+    cache.set('api_connection_tested', { value: true, timestamp: Date.now() });
+    if (!isConnected) {
+      throw new Error(`Cannot connect to ${API_BASE_URL}. Please verify:\n1. The Streamlit app is deployed at ${API_BASE_URL}\n2. The app is accessible in your browser\n3. Your internet connection is working`);
+    }
   }
   
   try {
@@ -207,16 +242,30 @@ async function getSEOAnalysis(videoId, channelHandle, niche) {
     const url = `${API_BASE_URL}?${params.toString()}`;
     console.log('Fetching SEO analysis from:', url);
     
-    const response = await fetch(url, {
-      method: 'GET',
-      mode: 'cors',
-      credentials: 'omit',
-      headers: {
-        'Accept': 'application/json, text/html, */*'
+    let response;
+    try {
+      response = await fetch(url, {
+        method: 'GET',
+        mode: 'cors',
+        credentials: 'omit',
+        headers: {
+          'Accept': 'application/json, text/html, */*'
+        }
+      });
+      console.log('Fetch response received, status:', response.status);
+    } catch (fetchError) {
+      console.error('Fetch error details:', {
+        name: fetchError.name,
+        message: fetchError.message,
+        stack: fetchError.stack
+      });
+      
+      // Check if it's a network error
+      if (fetchError.name === 'TypeError' && fetchError.message.includes('Failed to fetch')) {
+        throw new Error(`Network error: Could not connect to ${API_BASE_URL}. Please verify:\n1. The Streamlit app is deployed and running\n2. The URL is correct: ${API_BASE_URL}\n3. Your internet connection is working\n4. The app is accessible in your browser`);
       }
-    });
-    
-    console.log('Fetch response received, status:', response.status);
+      throw fetchError;
+    }
     
     const result = await parseStreamlitResponse(response);
     

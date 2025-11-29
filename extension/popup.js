@@ -87,15 +87,14 @@ document.addEventListener('DOMContentLoaded', () => {
           
           // Show detailed error message
           let errorMsg = error.message || 'Unknown error';
-          if (errorMsg.includes('Failed to fetch') || errorMsg.includes('NetworkError')) {
-            errorMsg = 'Network error: Could not connect to server. Please check:\n1. Internet connection\n2. Server URL: ' + API_BASE_URL + '\n3. Server is running';
-          } else if (errorMsg.includes('CORS')) {
-            errorMsg = 'CORS error: Server does not allow requests from extension. Please check server CORS settings.';
-          } else if (errorMsg.includes('parse JSON')) {
-            errorMsg = 'Response parsing error: Server returned invalid data. ' + errorMsg;
-          }
           
-          statusText.textContent = '❌ Error: ' + errorMsg;
+          // Format error message for display (replace \n with <br>)
+          const formattedMsg = errorMsg.replace(/\n/g, '<br>');
+          
+          statusText.innerHTML = '❌ Error: ' + formattedMsg;
+          
+          // Also log to console
+          console.error('Full error:', error);
           
           // Show error details in console for debugging
           console.error('Full error details:', {
