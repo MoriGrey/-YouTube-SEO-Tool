@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #fff;
+        }
+        button {
+            background: #4a9eff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 15px;
+            background: #2d2d2d;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success { color: #4caf50; }
+        .error { color: #f44336; }
+        .info { color: #ff9800; }
+        a { color: #4a9eff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>🔧 API Connection Test</h1>
+    
+    <div style="background: #2d2d2d; padding: 15px; border-radius: 8px; margin: 20px 0;">
+        <h3>⚠️ Önemli Not</h3>
+        <p>Bu sayfa <code>file://</code> protokolü ile açıldığı için CORS hatası alabilirsiniz.</p>
+        <p><strong>Çözüm:</strong> Aşağıdaki linkleri direkt browser'da açın veya extension'ı kullanın.</p>
+    </div>
+    
+    <h2>Test 1: Health Check (Direkt Link)</h2>
+    <p>Aşağıdaki linki yeni sekmede açın:</p>
+    <a href="https://youtoubeseo.streamlit.app?_api=true&action=health" target="_blank">
+        https://youtoubeseo.streamlit.app?_api=true&action=health
+    </a>
+    <p style="color: #888; font-size: 12px; margin-top: 5px;">
+        Beklenen: JSON response görmelisiniz: <code>{"status": "ok", "service": "YouTube SEO AGI Tool API", "version": "1.0.0"}</code>
+    </p>
+    
+    <h2>Test 2: Browser Console Test</h2>
+    <p>F12 → Console → Aşağıdaki kodu yapıştırın:</p>
+    <div class="result info">
+fetch('https://youtoubeseo.streamlit.app?_api=true&action=health')
+  .then(r => r.text())
+  .then(text => {
+    console.log('Response:', text);
+    // Try to parse JSON
+    try {
+      const json = JSON.parse(text);
+      console.log('Parsed JSON:', json);
+    } catch(e) {
+      console.log('Not JSON, trying to extract...');
+      const match = text.match(/&lt;pre[^&gt;]*id=["']json-response["'][^&gt;]*&gt;([\s\S]*?)&lt;\/pre&gt;/);
+      if (match) {
+        console.log('Found JSON in pre tag:', JSON.parse(match[1]));
+      }
+    }
+  })
+  .catch(err => console.error('Error:', err));
+    </div>
+    
+    <h2>Test 3: Extension Test</h2>
+    <p>Extension'ı kullanarak test edin:</p>
+    <ol>
+        <li>Chrome'da <code>chrome://extensions/</code> açın</li>
+        <li>Extension'ı bulun ve "Reload" yapın</li>
+        <li>Herhangi bir YouTube videosu açın</li>
+        <li>Extension'ın çalışıp çalışmadığını kontrol edin</li>
+    </ol>
+    
+    <h2>Test 4: Python Script Test</h2>
+    <p>Python ile test edin:</p>
+    <div class="result info">
+import requests
+
+url = "https://youtoubeseo.streamlit.app?_api=true&action=health"
+response = requests.get(url)
+print("Status:", response.status_code)
+print("Response:", response.text)
+    </div>
+    
+    <h2>Test 5: cURL Test (Terminal)</h2>
+    <p>Terminal'de çalıştırın:</p>
+    <div class="result info">
+curl "https://youtoubeseo.streamlit.app?_api=true&action=health"
+    </div>
+    
+    <hr style="margin: 30px 0; border-color: #444;">
+    
+    <h2>🔍 Sorun Giderme</h2>
+    
+    <h3>Eğer "Failed to fetch" hatası alıyorsanız:</h3>
+    <ul>
+        <li>✅ <strong>file:// protokolü sorunu:</strong> HTML dosyasını direkt açmak yerine, yukarıdaki linkleri kullanın</li>
+        <li>✅ <strong>CORS sorunu:</strong> Extension'lar CORS'tan etkilenmez, extension'ı kullanın</li>
+        <li>✅ <strong>Network sorunu:</strong> İnternet bağlantınızı kontrol edin</li>
+        <li>✅ <strong>App down:</strong> <a href="https://youtoubeseo.streamlit.app" target="_blank">App'i direkt açın</a> ve çalışıp çalışmadığını kontrol edin</li>
+    </ul>
+    
+    <h3>Eğer JSON parse hatası alıyorsanız:</h3>
+    <ul>
+        <li>Streamlit HTML içinde JSON döndürüyor olabilir</li>
+        <li>Extension'daki parse fonksiyonu bunu handle ediyor</li>
+        <li>Manuel test için yukarıdaki linkleri kullanın</li>
+    </ul>
+    
+    <h3>Extension Test Adımları:</h3>
+    <ol>
+        <li>Extension'ı yükle/reload et</li>
+        <li>YouTube'da bir video aç</li>
+        <li>F12 → Console → Extension loglarını kontrol et</li>
+        <li>Extension popup'ını aç ve test et</li>
+    </ol>
+</body>
+</html>
+
